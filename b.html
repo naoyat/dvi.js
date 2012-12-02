@@ -1,0 +1,37 @@
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; encoding=utf-8" />
+  <title>a</title>
+  <script type="text/javascript" src="js/jquery-1.8.3.min.js"></script>
+
+  <script type="text/javascript" src="js/jis2uc.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/sprintf.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/dvi-parser.js" charset="utf-8"></script>
+</head>
+<body>
+
+<div id="page"></div>
+
+<script type="text/javascript">
+for (var i = 1; i <= 1000; i++) {
+  var x = 800 * Math.random(), y = 400 * Math.random();
+  var r = Math.floor(256 * Math.random()),
+      g = Math.floor(256 * Math.random()),
+      b = Math.floor(256 * Math.random());
+  var pt = 5 + Math.floor(10 * Math.random());
+  var c = '#' + ("000000" + Number(r*65536 + g*256 + b).toString(16)).substr(-6);
+  var box = $('<div />', {
+                     id: '' + i,
+                     text: '' + i
+              }).css({
+                     position: "absolute",
+                     top: y + "pt",
+                     left: x + "pt",
+                     color: c,
+                     'font-size': pt + "pt"
+              }).appendTo('#page');
+}
+</script>
+
+</body>
+</html>
