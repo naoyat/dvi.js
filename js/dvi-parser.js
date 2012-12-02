@@ -5,25 +5,27 @@
  * @param {String} url
  * @param {function} callback
 */
-function getBinary(url, callback) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', url, true);
-  if (xhr.hasOwnProperty('responseType')) { // ArrayBuffer - fx & chrome
-    xhr.responseType = 'arraybuffer';
-  } else { // if not ArrayBuffer, must for binary
-    xhr.overrideMimeType('text/plain; charset=x-user-defined');
-  }
-  xhr.onreadystatechange = function(){
-    if (xhr.readyState == 4 && xhr.status == 200) {
-      // fx & chrome handle ArrayBuffer very different
-      var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
-          mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
-          bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
+var PX_PER_PT = 1.3325;
 
-      callback(bin_data);
+function getBinary(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    if (xhr.hasOwnProperty('responseType')) { // ArrayBuffer - fx & chrome
+        xhr.responseType = 'arraybuffer';
+    } else { // if not ArrayBuffer, must for binary
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
     }
-  };
-  xhr.send(null);
+    xhr.onreadystatechange = function(){
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            // fx & chrome handle ArrayBuffer very different
+            var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
+                mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
+                bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
+            
+            callback(bin_data);
+        }
+    };
+    xhr.send(null);
 }
 
 /**
@@ -35,10 +37,10 @@ function getBinary(url, callback) {
  * @return {String}
  */
 function p0x(pad, n) {
-  var s = Number(n).toString(16);
-  if (s.length >= pad) return s;
-  s = "0000000000" + s;
-  return s.substr(-pad);
+    var s = Number(n).toString(16);
+    if (s.length >= pad) return s;
+    s = "0000000000" + s;
+    return s.substr(-pad);
 }
 
 /**
@@ -48,61 +50,62 @@ function p0x(pad, n) {
  * @return {String}
 */
 function hexdump(arr, offset, size) {
-  var len = arr.length;
-  if (offset + size < len) len = offset + size;
-  var dumped = "";
-  for (var j = offset; j < len; j += 16) {
-    dumped += p0x(8, j) + ":";
-    var tmp = "";
-    for (var i = 0; i < 16; i++) {
-      if (j+i < len) {
-        dumped += " " + p0x(2, arr[j+i]);
-        var c = arr[j+i];
-        if (0x20 <= c && c < 0x7f)
-          tmp += String.fromCharCode(c);
-        else
-          tmp += '.';
-      } else {
-        dumped += "   ";
-      }
+    var len = arr.length;
+    if (offset + size < len) len = offset + size;
+    var dumped = "";
+    for (var j = offset; j < len; j += 16) {
+        dumped += p0x(8, j) + ":";
+        var tmp = "";
+        for (var i = 0; i < 16; i++) {
+            if (j+i < len) {
+                dumped += " " + p0x(2, arr[j+i]);
+                var c = arr[j+i];
+                if (0x20 <= c && c < 0x7f)
+                    tmp += String.fromCharCode(c);
+                else
+                    tmp += '.';
+            } else {
+                dumped += "   ";
+            }
+        }
+        dumped += "  " + tmp + "\n";
     }
-    dumped += "  " + tmp + "\n";
-  }
-  return dumped;
+    return dumped;
 }
 
 function readu(arr, ofs, bytes) {
-  var x = 0;
-  for (var i = 0; i < bytes; i++) {
-    x = x * 256 + arr[ofs+i];
-  }
-  return x;
+    var x = 0;
+    for (var i = 0; i < bytes; i++) {
+        x = x * 256 + arr[ofs+i];
+    }
+    return x;
 }
 
 function readi(arr, ofs, bytes) {
-  var x = arr[ofs];
-  if (x >= 128) x -= 256;
-  for (var i = 1; i < bytes; i++) {
-    x = x * 256 + arr[ofs+i];
-  }
-  return x;
+    var x = arr[ofs];
+    if (x >= 128) x -= 256;
+    for (var i = 1; i < bytes; i++) {
+        x = x * 256 + arr[ofs+i];
+    }
+    return x;
 }
+
 function reads(arr, ofs, bytes) {
-  var s = "";
-  for (var i = 0; i < bytes; i++) {
-    s += String.fromCharCode(arr[ofs+i]);
-  }
-  return s;
+    var s = "";
+    for (var i = 0; i < bytes; i++) {
+        s += String.fromCharCode(arr[ofs+i]);
+    }
+    return s;
 }
 
 function dvidump(arr) {
-    var pass1_code = pass1(arr);
-    var dumped = dump_pass1_code(pass1_code);
-    console.log(dumped);
+    var insts = parse_dvi(arr);
+    var document = grouping(insts);
+    document = rejoin_chars(document);
 
-    var pass2_code = pass2(pass1_code);
-    var dumped = dump_pass2_code(pass2_code);
-    return dumped;
+    show_page(document.pages[0], document.font_info);
+    // render(document);
+    return "";
 }
 
 function delta(dh, dv) {
@@ -115,51 +118,73 @@ function delta(dh, dv) {
     return s;
 }
 
-function puts(h, v, dir, font_info, str) {
+function puts(h, v, width, dir, font_info, str) {
     // var writing_mode = (dir == 0) ? 'lr-tb' : 'tb-rl'; // IE
     var writing_mode = (dir == 0) ? '' : 'vertical-rl'; // IE
-    var x = 72.27 + h / 65536, y = 72.27 + v / 65536;
-    var pt = font_info.s * 0.9 / 65536;
+    var x = 72.27 + h / 65536, y = 72.27 + v / 65536, w = width / 65536;
+    var pt = font_info.s / 65536;
+    var css = {
+        position: "absolute",
+        border: "solid 0.5px",
+        // 'text-align': "justify",
+        font: sprintf("%.1fpt '%s'", pt, font_info.file)
+    };
     var family = font_info.file.replace(/[1-9][0-9]*$/, "");
     if (dir == 0) {
-        //y += pt * 0.7;
-        // y += 9;
+        if (family == 'min' || family == 'goth') {
+            y -= pt * 0.95;
+        } else { 
+            y -= pt * 0.75;
+        }
+
+        css.top = sprintf("%.2fpt", y);
+        css.left = sprintf("%.2fpt", x);
+        //css.width = sprintf("%.2fpt", w);
     } else {
-        //y += pt * 1;
-        x -= pt * 0.6;
-        // x -= 5;
+        if (family == 'tmin' || family == 'tgoth') {
+            x -= pt * 0.2;
+            //x -= pt * 0.5;
+        } else {
+            x -= pt * 0.3;
+            //x -= pt * 0.;
+        }
+        
+        css.top = sprintf("%.2fpt", y);
+        css.left = sprintf("%.2fpt", x);
+        css.width = sprintf("%.2fpt", pt);
+        css.height = sprintf("%.2fpt", w*2);
+        css['writing-mode'] = 'vertical-rl';
+        css['-webkit-writing-mode'] = 'vertical-rl';
     }
 
-    $('<div />', {
+    $('<span />', {
 //        id: 'abc',
         text: str
-    }).css({
-        position: "absolute",
-        top: y + "pt",
-        left: x + "pt",
-        'writing-mode': writing_mode,
-        '-webkit-writing-mode': writing_mode,
-        'font-family': family,
-        'font-size': pt + "pt"
-    }).appendTo('#out');
+    }).css(css).appendTo('#out');
 }
 
 function strWidth(font_info, str) {
-    var e = $("#ruler");
-    var pt = font_info.s * 0.9 / 65536;
-    var family = font_info.file.replace(/[1-9][0-9]*$/, "");
-    e.css({
-        'font-family': family,
-        'font-size': pt + "pt"
-    });
-    var width = e.text(str).get(0).offsetWidth;
-    e.empty();
-    // console.log("strWidth("+ str + ") = "+ width);
-    return width;
+    var pt = font_info.s / 65536;
+    var font_desc = sprintf("%.1fpt '%s'", pt, font_info.file);
+    var canvas = document.getElementById('metrics');
+    if (canvas.getContext) {
+        var context = canvas.getContext('2d');
+        context.font = font_desc;
+        // context['writing-mode'] = 'vertical-rl';
+        // context['-webkit-writing-mode'] = 'vertical-rl';
+        var metrics = context.measureText(str);
+        var width = metrics.width / PX_PER_PT;
+        console.log(sprintf("strWidth(\"%s\" w/ \"%s\") = %.2f", str, font_desc, width));
+        // return [width, height];
+        return width;
+    }
+    return undefined;
 }
 
-function show_page(insts, font_info) {
-    var page_no = insts[0].c[0];
+function show_page(page, font_info) {
+    // console.log(dump_code(page.insts));
+
+    var page_no = page.count[0];
     // var vofs = 1000 * 65536 * page_no;
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
@@ -167,35 +192,20 @@ function show_page(insts, font_info) {
     var dir = 0;
     var font_size = 10 * 65536;
 
-    for (var j = 1; ; j++) {
-        var inst = insts[j];
-        if (inst.op == 'eop') break;
+    for (var j in page.insts) {
+        var inst = page.insts[j];
         switch (inst.op) {
-        case 'set':
-            if (inst.c < 128) {
-                var s = String.fromCharCode(inst.c);
-                var width = strWidth(font_info[f], s) * 0.83; // * 0.9;
-                puts(h, v, dir, font_info[f], s);
-                if (dir == 0) {
-                    h += width * 65536; // font_size * 0.6;
-                } else {
-                    v += width * 65536; // font_size * 0.6;
-                }
-            } else if (inst.c < 256) {
-                /*
-                puts( h, v, "\\x"+ p0x(2, inst.c) );
-                h += 4.8 * 65536;
-                 */
-            } else if (inst.c < 65536) {
-                var s = jis2uc(inst.c);
-                var width = font_info[f].s * 0.93 / 65536; //strWidth(font_info[f], s) - 2;
-                puts(h, v, dir, font_info[f], s);
-                if (dir == 0) {
-                    h += width * 65536;
-                } else {
-                    v += width * 65536;
-                }
+        case 'sets':
+            var str = inst.s;
+            console.log("\""+ str +"\"");
+            var width = strWidth(font_info[f], str) * 65536; // * 0.9;
+            if (dir == 0) {
+                // width += inst.w;
+                puts(h, v, width, dir, font_info[f], str);
+                h += width; // font_size * 0.6;
             } else {
+                puts(h, v, width, dir, font_info[f], str);
+                v += width; // font_size * 0.6;
             }
             break;
         case 'set_rule':
@@ -306,77 +316,231 @@ function show_page(insts, font_info) {
     }
 }
 
-function dump_pass2_code(pass2_code) {
-    // A4: 約 8.27 × 約 11.69 インチ = 597.67pt x 844.84pt
-    var pre = undefined, post = undefined, pages = [];
-    for (var i in pass2_code) {
-        var insts = pass2_code[i];
-        switch (insts[0].op) {
-        case 'pre': pre = insts; break;
-        case 'bop': pages.push(insts); break;
-        case 'post': post = insts; break;
-        }
-    }
-
-    var font_info = {};
-    for (var j in post) {
-        if (post[j].op == 'fnt_def') {
-            font_info[post[j].k] = post[j];
-        }
-    }
-    for (var j in pages) {
-        show_page(pages[j], font_info);
-        break;
-    }
-}
-
-function dump_pass1_code(pass1_code) {
-    var dumped = pass1_code.length + " instructions\n";
-    for (var i in pass1_code) {
-        var inst = pass1_code[i];
+function dump_code(insts) {
+    var dumped = insts.length + " instructions\n";
+    for (var i in insts) {
+        var inst = insts[i];
         // dumped += ":"+ i +":"+ JSON.stringify(inst) + "\n";
         dumped += JSON.stringify(inst).replace(/,/g,", ").replace(/"/g,"") + "\n";
     }
     return dumped;
 }
 
-function pass2(pass1_code) {
-    var code2 = [];
+function rejoin_chars(document) {
+    var h, v, w, x, y, z, dir;
+    var f, st;
+
+    for (var i in document.pages) {
+        var page = document.pages[i];
+
+        // bop
+        h = v = w = x = y = z = dir = 0;
+        st = [];
+
+        var rejoined_insts = [];
+        var sets_c = [], sets_s = "", sets_w = 0;
+        for (var j in page.insts) {
+            var inst = page.insts[j];
+            // console.log("> "+ JSON.stringify(inst));
+            var skip = false;
+            switch (inst.op) {
+            case 'set':
+                sets_c.push(inst.c);
+                sets_s += inst._;
+                // sets_w += 0;
+                skip = true;
+                break;
+            case 'set_rule':
+                if (dir == 0) {
+                    h += inst.b;
+                } else {
+                    v += inst.b;
+                }
+                break;
+            case 'push':
+                st.push([h,v,w,x,y,z,dir]);
+                break;
+            case 'pop':
+                var last_h = h, last_v = v;
+                var tmp = st.pop();
+                h = tmp[0]; v = tmp[1]; w = tmp[2]; x = tmp[3]; y = tmp[4]; z = tmp[5]; dir = tmp[6];
+                break;
+
+            case 'right':
+                if (dir == 0) {
+                    h += inst.b;
+                } else {
+                    v += inst.b;
+                }
+                // skipping
+/**/
+                if (f != undefined && sets_c.length > 0) {
+                    // console.log(f);
+                    // console.log(JSON.stringify(document.font_info[f]));
+                    var em = Math.floor(4 * inst.b / document.font_info[f].s);
+                    if (em >= -1) {
+                        if (em >= 1) { // for (var k = 0; k < em; k++) {
+                            sets_c.push(0x20);
+                            sets_s += ' ';
+                            sets_w -= document.font_info[f].s / 2;
+                        }
+                        sets_w += inst.b;
+                        skip = true;
+                    }
+                }
+/**/
+                break;
+            case 'w':
+                if (inst.b) w = inst.b;
+                if (dir == 0) {
+                    h += w;
+                } else {
+                    v += w;
+                }
+                // skipping
+/**/
+                if (f != undefined && sets_c.length > 0) {
+                    var em = Math.floor(4 * w / document.font_info[f].s);
+                    if (em >= -1) {
+                        if (em >= 1) { // for (var k = 0; k < em; k++) {
+                            sets_c.push(0x20);
+                            sets_s += ' ';
+                            sets_w -= document.font_info[f].s / 2;
+                        }
+                        sets_w += w;
+                        skip = true;
+                    }
+                }
+/**/
+                break;
+            case 'x':
+                if (inst.b) x = inst.b;
+                if (dir == 0) {
+                    h += x;
+                } else {
+                    v += x;
+                }
+                // skipping
+/**/
+                if (f != undefined && sets_c.length > 0) {
+                    var em = Math.floor(4 * x / document.font_info[f].s);
+                    if (em >= -1) {
+                        if (em >= 1) { // for (var k = 0; k < em; k++) {
+                            sets_c.push(0x20);
+                            sets_s += ' ';
+                            sets_w -= document.font_info[f].s / 2;
+                        }
+                        sets_w += x;
+                        skip = true;
+                    }
+                }
+/**/
+                break;
+            case 'down':
+                if (dir == 0) {
+                    v += inst.a;
+                } else {
+                    h -= inst.a;
+                }
+                break;
+            case 'y':
+                if (inst.a) y = inst.a;
+                if (dir == 0) {
+                    v += y;
+                } else {
+                    h -= y;
+                }
+                break;
+            case 'z':
+                if (inst.a) z = inst.a;
+                if (dir == 0) {
+                    v += z;
+                } else {
+                    h -= z;
+                }
+                break;
+            case 'fnt':
+                f = inst.k;
+                break;
+            case 'fnt_def':
+                break;
+            case 'xxx':
+                break;
+            case 'dir':
+                dir = inst.d;
+                break;
+            default:
+                break;
+            }// endswitch
+
+            if (skip) continue;
+
+            if (sets_c.length > 0) {
+                rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w});
+                sets_c = []; sets_s = ""; sets_w = 0;
+            }
+            rejoined_insts.push(inst);
+        } // endfor
+
+        if (sets_c.length > 0) {
+            rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w});
+        }
+        page.insts = rejoined_insts;
+        document.pages[i] = page;
+    }
+
+    return document;
+}
+
+function grouping(insts) {
+    var document = {
+        preamble: undefined,
+        pages: [],
+        postamble: undefined,
+        font_info: {}
+    };
+
     var stack = [];
-    for (var i in pass1_code) {
-        var inst = pass1_code[i];
-        // dumped += ":"+ inst +":"+ JSON.stringify(pass1_code[inst]) + "<br>\n";
+    var count = undefined;
+
+    for (var i in insts) {
+        var inst = insts[i];
+
         switch (inst.op) {
         case 'pre':
-            stack.push(inst);
-            code2.push(stack);
-            stack = [];
+            document.preamble = inst;
             break;
+
         case 'bop':
-            stack.push(inst);
+            count = inst.c;
             break;
         case 'eop':
-            stack.push(inst);
-            code2.push(stack);
+            document.pages.push({count:count, insts:stack});
             stack = [];
             break;
+
         case 'post':
-            stack.push(inst);
+            document.postamble = inst;
             break;
         case 'post_post':
-            stack.push(inst);
-            code2.push(stack);
-            stack = [];
             break;
+
+        case 'fnt_def':
+            document.font_info[inst.k] = inst;
+            break;
+
         default:
             stack.push(inst);
             break;
         }
     }
-    return code2;
+
+    // console.log(JSON.stringify(document));
+
+    return document;
 }
 
-function pass1(arr) {
+function parse_dvi(arr) {
     var len = arr.length;
     var code = [];
 

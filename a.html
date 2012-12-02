@@ -13,7 +13,7 @@
 <body>
 
 <div id="out"></div>
-<span id="ruler" style="visibility:hidden; position:absolute; white-space:nowrap;"></span>
+<canvas id="metrics" width="0" height="0" style="visibility:hidden; position:absolute;"></canvas>
 
 <script type="text/javascript">
 $(function() {
@@ -32,9 +32,8 @@ if (location.search.length > 1) {
   // "r5rs.dvi"
   getBinary(file, function(arraybuf) {
     var arr = new Uint8Array(arraybuf);
-    console.log("data length = " + arr.length);
-
-    console.log(hexdump(arr, 0, arr.length));
+    // console.log("data length = " + arr.length);
+    // console.log(hexdump(arr, 0, arr.length));
     dvidump(arr);
   });
 }
