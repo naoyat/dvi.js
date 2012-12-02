@@ -177,8 +177,7 @@ function rule(h, v, width, height, dir, color) {
 }
 
 function puts(h, v, width, dir, font_info, str, color) {
-    // var writing_mode = (dir == 0) ? 'lr-tb' : 'tb-rl'; // IE
-    var writing_mode = (dir == 0) ? '' : 'vertical-rl'; // IE
+    var writing_mode = (dir == 0) ? '' : 'vertical-rl';
     var x = 72.27 + h / 65536, y = 72.27 + v / 65536, w = width / 65536;
     var pt = font_info.s / 65536;
     var css = {
@@ -255,7 +254,7 @@ function show_page(page, font_info) {
         switch (inst.op) {
         case 'sets':
             var str = inst.s;
-            // console.log("\""+ str +"\"");
+            console.log("\""+ str +"\"");
             var width = strWidth(font_info[f], str) * 65536;
             puts(h, vofs+v, width, dir, font_info[f], str, color);
             if (dir == 0) {
@@ -642,10 +641,11 @@ function parse_dvi(arr) {
                 // 日本語TeXでは set2 命令で漢字（JISコード）を指定する
                 var bytes = op - 127;
                 var c = readu(arr, ptr, bytes); ptr += bytes;
-                if (256 <= c && c < 65536)
+                if (c < 256) {
+                    code.push({op:'set', c:c, _:String.fromCharCode(c)});
+                } else if (c < 65536) {
                     code.push({op:'set', c:c, _:jis2uc(c)});
-                else
-                    code.push({op:'set', c:c});
+                }
                 break;
             case 132: // setrule
                 var a = readi(arr, ptr, 4); ptr += 4;
