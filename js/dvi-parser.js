@@ -802,8 +802,3 @@ function parse_dvi(arr) {
     } // endfor
     return code;
 }
-
-
-if (location.search.length > 1) {
-    dvi_load(location.search.substr(1));
-}

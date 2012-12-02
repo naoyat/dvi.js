@@ -15,5 +15,11 @@
 <div id="out"></div>
 <canvas id="metrics" width="0" height="0" style="visibility:hidden; position:absolute;"></canvas>
 
+<script type="text/javascript">
+if (location.search.length > 1) {
+    dvi_load("samples/"+ location.search.substr(1));
+}
+</script>
+
 </body>
 </html>
