@@ -21,7 +21,6 @@ function getBinary(url, callback) {
             var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
                 mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
                 bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
-            
             callback(bin_data);
         }
     };
@@ -112,6 +111,9 @@ var dvi = undefined;
 var dvi_curr_page = 0;
 
 function dvi_load(file) {
+    if (!file.match(/.*\.dvi/)) {
+        file += ".dvi";
+    }
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         // console.log(hexdump(arr, 0, arr.length));
@@ -230,7 +232,6 @@ function strWidth(font_info, str) {
         // context['-webkit-writing-mode'] = 'vertical-rl';
         var metrics = context.measureText(str);
         var width = metrics.width / PX_PER_PT;
-        // console.log(sprintf("strWidth(\"%s\" w/ \"%s\") = %.2f", str, font_desc, width));
         return width;
     }
     return undefined;
@@ -255,7 +256,7 @@ function show_page(page, font_info) {
         case 'sets':
             var str = inst.s;
             // console.log("\""+ str +"\"");
-            var width = strWidth(font_info[f], str) * 65536; // * 0.9;
+            var width = strWidth(font_info[f], str) * 65536;
             puts(h, vofs+v, width, dir, font_info[f], str, color);
             if (dir == 0) {
                 h += width; // font_size * 0.6;
@@ -800,4 +801,9 @@ function parse_dvi(arr) {
         // dumped += "["+ op + "]<b>"+ name + "</b> " + args +" <i>// "+ rem +" </i><br>\n";
     } // endfor
     return code;
+}
+
+
+if (location.search.length > 1) {
+    dvi_load(location.search.substr(1));
 }
