@@ -98,14 +98,47 @@ function reads(arr, ofs, bytes) {
     return s;
 }
 
-function dvidump(arr) {
+function render_dvi(arr) {
     var insts = parse_dvi(arr);
     var document = grouping(insts);
     document = rejoin_chars(document);
 
-    show_page(document.pages[0], document.font_info);
-    // render(document);
-    return "";
+    for (var j in document.pages) {
+        show_page(document.pages[j], document.font_info);
+    }
+}
+
+var dvi = undefined;
+var dvi_curr_page = 0;
+
+function dvi_load(file) {
+    getBinary(file, function(arraybuf) {
+        var arr = new Uint8Array(arraybuf);
+        // console.log(hexdump(arr, 0, arr.length));
+        var insts = parse_dvi(arr);
+        dvi = rejoin_chars(grouping(insts));
+        dvi_curr_page = 0;
+        show_page(dvi.pages[0], dvi.font_info);
+    });
+}
+
+function dvi_keyevent() {
+    console.log("keyCode = "+ event.keyCode);
+    switch (event.keyCode) {
+        case 32: // space
+            break;
+        case 37: case 38: case 72: case 75: case 80: // left up h k p
+            if (dvi != undefined && dvi_curr_page > 0) {
+                show_page(dvi.pages[--dvi_curr_page], dvi.font_info);
+            }
+            break;
+        case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
+            if (dvi != undefined && dvi_curr_page < dvi.pages.length-1) {
+                show_page(dvi.pages[++dvi_curr_page], dvi.font_info);
+            }
+            break;
+        default: break;
+    }
 }
 
 function delta(dh, dv) {
@@ -118,7 +151,30 @@ function delta(dh, dv) {
     return s;
 }
 
-function puts(h, v, width, dir, font_info, str) {
+function rule(h, v, width, height, dir, color) {
+    var left = 72.27 + h / 65536,
+        bottom = 72.27 + v / 65536, top,
+        wd = width / 65536,
+        ht = height / 65536;
+    // console.log(sprintf("rule %.1f %.1f %.1f %.1f %d", left, bottom, wd,ht, dir));
+    if (dir == 0) {
+        top = bottom - ht;
+    } else {
+        top = bottom;
+        var tmp = ht; ht = wd; wd = tmp;
+    }
+    $('<span />').css({
+        position: "absolute",
+        border: "0.1px solid",
+        'background-color': color,
+        top: sprintf("%.2fpt", top),
+        left: sprintf("%.2fpt", left),
+        width: sprintf("%.2fpt", wd),
+        height: sprintf("%.2fpt", ht)
+    }).appendTo('#out');
+}
+
+function puts(h, v, width, dir, font_info, str, color) {
     // var writing_mode = (dir == 0) ? 'lr-tb' : 'tb-rl'; // IE
     var writing_mode = (dir == 0) ? '' : 'vertical-rl'; // IE
     var x = 72.27 + h / 65536, y = 72.27 + v / 65536, w = width / 65536;
@@ -126,6 +182,7 @@ function puts(h, v, width, dir, font_info, str) {
     var css = {
         position: "absolute",
         border: "solid 0.5px",
+        color: color,
         // 'text-align': "justify",
         font: sprintf("%.1fpt '%s'", pt, font_info.file)
     };
@@ -158,7 +215,6 @@ function puts(h, v, width, dir, font_info, str) {
     }
 
     $('<span />', {
-//        id: 'abc',
         text: str
     }).css(css).appendTo('#out');
 }
@@ -174,8 +230,7 @@ function strWidth(font_info, str) {
         // context['-webkit-writing-mode'] = 'vertical-rl';
         var metrics = context.measureText(str);
         var width = metrics.width / PX_PER_PT;
-        console.log(sprintf("strWidth(\"%s\" w/ \"%s\") = %.2f", str, font_desc, width));
-        // return [width, height];
+        // console.log(sprintf("strWidth(\"%s\" w/ \"%s\") = %.2f", str, font_desc, width));
         return width;
     }
     return undefined;
@@ -183,11 +238,13 @@ function strWidth(font_info, str) {
 
 function show_page(page, font_info) {
     // console.log(dump_code(page.insts));
+    $('#out').children().remove();
 
     var page_no = page.count[0];
-    // var vofs = 1000 * 65536 * page_no;
+    var vofs = 0; //888 * 65536 * (page_no - 1);
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
+    var color = "Black", colorst = [];
     // var font_info = {};
     var dir = 0;
     var font_size = 10 * 65536;
@@ -197,26 +254,34 @@ function show_page(page, font_info) {
         switch (inst.op) {
         case 'sets':
             var str = inst.s;
-            console.log("\""+ str +"\"");
+            // console.log("\""+ str +"\"");
             var width = strWidth(font_info[f], str) * 65536; // * 0.9;
+            puts(h, vofs+v, width, dir, font_info[f], str, color);
             if (dir == 0) {
-                // width += inst.w;
-                puts(h, v, width, dir, font_info[f], str);
                 h += width; // font_size * 0.6;
             } else {
-                puts(h, v, width, dir, font_info[f], str);
                 v += width; // font_size * 0.6;
             }
             break;
         case 'set_rule':
+            rule(h, vofs+v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 h += inst.b;
             } else {
+                // rule(h, v, -inst.a, inst.b, dir);
                 v += inst.b;
             }
             // var height = inst.a / 65536;
             // var width = inst.b / 65536;
             // dumped += sprintf("{■:%.1f x %.1f}", width, height);
+            break;
+        case 'put_rule':
+            rule(h, vofs+v, inst.b, inst.a, dir, color);
+            if (dir == 0) {
+                // h += inst.b;
+            } else {
+                // v += inst.b;
+            }
             break;
         case 'push':
             st.push([h,v,w,x,y,z,dir]);
@@ -303,6 +368,26 @@ function show_page(page, font_info) {
             // dumped += "<font color=#6666cc>{font "+ inst.k + ":=" + inst.file +"}</font>";
             break;
         case 'xxx':
+            // console.log("special: " + inst.x);
+            if (inst.x.match(/color (.*)/)) {
+                var cmd = RegExp.$1;
+                if (cmd.match(/push +(.*)/)) {
+                    var arg = RegExp.$1;
+                    if (arg.match(/rgb ([^ ]+) ([^ ]+) ([^ ]+)/)) {
+                        var r = Math.floor(255 * RegExp.$1),
+                            g = Math.floor(255 * RegExp.$2),
+                            b = Math.floor(255 * RegExp.$3);
+                        color = '#' + p0x(2,r) + p0x(2,g) + p0x(2,b);
+                    } else {
+                        color = arg;
+                    }
+                    // console.log("color[] << " + color);
+                    colorst.push(color);
+                } else if (cmd.match(/pop/)) {
+                    color = colorst.pop();
+                    // console.log("color[] >> " + color);
+                }
+            }
             // dumped += "<font size=2 color=\"#cccc99\">{special "+ inst.x + "}</font>";
             break;
         case 'dir':
@@ -655,7 +740,7 @@ function parse_dvi(arr) {
                 var bytes = op - 238;
                 var k = readu(arr, ptr, bytes); ptr += bytes;
                 var x_ = reads(arr, ptr, k); ptr += k;
-                code.push({op:'xxx', x:x});
+                code.push({op:'xxx', x:x_});
                 break;
             case 243: case 244: case 245: case 246: // fnt_def
                 // ※通常 fnt_def1 しか使われない

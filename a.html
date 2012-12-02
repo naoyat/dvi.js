@@ -10,35 +10,15 @@
 
   <link rel="stylesheet" type="text/css" href="texfonts.css"></style>
 </head>
-<body>
+<body onKeyDown="dvi_keyevent()">
 
 <div id="out"></div>
 <canvas id="metrics" width="0" height="0" style="visibility:hidden; position:absolute;"></canvas>
 
 <script type="text/javascript">
-$(function() {
-/*
-getBinary("naochan!.tex", function(arraybuf) {
-  var arr = new Uint8Array(arraybuf);
-  var size = arr.length;
-  console.log("data length = " + size);
-  console.log(hexdump(arr, 0, size));
-});
-*/
-
 if (location.search.length > 1) {
-  var file = location.search.substr(1) + ".dvi";
-  // "naochan!.dvi"
-  // "r5rs.dvi"
-  getBinary(file, function(arraybuf) {
-    var arr = new Uint8Array(arraybuf);
-    // console.log("data length = " + arr.length);
-    // console.log(hexdump(arr, 0, arr.length));
-    dvidump(arr);
-  });
+    dvi_load(location.search.substr(1) + ".dvi");
 }
-
-});
 </script>
 
 </body>
