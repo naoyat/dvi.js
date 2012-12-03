@@ -1,102 +1,15 @@
-/**
- * load binary-file from url, then callback
- * from http://en.dogeno.us/2011/04/post-to-appengine-blobstore-using-ajax-firefox-and-chrome/
- *
- * @param {String} url
- * @param {function} callback
-*/
+var DO_REJOIN = false;
+//var DO_REJOIN = true;
+var REJOIN_W = true;
+
 var PX_PER_PT = 1.3325;
+var PT72_PER_PT = 72 / 72.27;
+var JFM_SHRINK = 0.962216;
 
-function getBinary(url, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    if (xhr.hasOwnProperty('responseType')) { // ArrayBuffer - fx & chrome
-        xhr.responseType = 'arraybuffer';
-    } else { // if not ArrayBuffer, must for binary
-        xhr.overrideMimeType('text/plain; charset=x-user-defined');
-    }
-    xhr.onreadystatechange = function(){
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            // fx & chrome handle ArrayBuffer very different
-            var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
-                mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
-                bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
-            callback(bin_data);
-        }
-    };
-    xhr.send(null);
-}
+var dvi = undefined;
+var dvi_curr_page = 0;
 
-/**
- * generates zero-padded hexadecimal string
- * like sprintf("%0*x", pad, n)
- *
- * @param {number} pad
- * @param {number} n
- * @return {String}
- */
-function p0x(pad, n) {
-    var s = Number(n).toString(16);
-    if (s.length >= pad) return s;
-    s = "0000000000" + s;
-    return s.substr(-pad);
-}
-
-/**
- * hex-dump a Uint8Array
- *
- * @param {Uint8Array} arr
- * @return {String}
-*/
-function hexdump(arr, offset, size) {
-    var len = arr.length;
-    if (offset + size < len) len = offset + size;
-    var dumped = "";
-    for (var j = offset; j < len; j += 16) {
-        dumped += p0x(8, j) + ":";
-        var tmp = "";
-        for (var i = 0; i < 16; i++) {
-            if (j+i < len) {
-                dumped += " " + p0x(2, arr[j+i]);
-                var c = arr[j+i];
-                if (0x20 <= c && c < 0x7f)
-                    tmp += String.fromCharCode(c);
-                else
-                    tmp += '.';
-            } else {
-                dumped += "   ";
-            }
-        }
-        dumped += "  " + tmp + "\n";
-    }
-    return dumped;
-}
-
-function readu(arr, ofs, bytes) {
-    var x = 0;
-    for (var i = 0; i < bytes; i++) {
-        x = x * 256 + arr[ofs+i];
-    }
-    return x;
-}
-
-function readi(arr, ofs, bytes) {
-    var x = arr[ofs];
-    if (x >= 128) x -= 256;
-    for (var i = 1; i < bytes; i++) {
-        x = x * 256 + arr[ofs+i];
-    }
-    return x;
-}
-
-function reads(arr, ofs, bytes) {
-    var s = "";
-    for (var i = 0; i < bytes; i++) {
-        s += String.fromCharCode(arr[ofs+i]);
-    }
-    return s;
-}
-
+/*
 function render_dvi(arr) {
     var insts = parse_dvi(arr);
     var document = grouping(insts);
@@ -106,10 +19,16 @@ function render_dvi(arr) {
         show_page(document.pages[j], document.font_info);
     }
 }
+*/
 
-var dvi = undefined;
-var dvi_curr_page = 0;
-
+function show_page_0() {
+    if (tfm_loading_count > 0) {
+        console.log("setTimeout..");
+        setTimeout(show_page_0, 0.1);
+    } else {
+        show_page(dvi.pages[0], dvi.font_info);
+    }
+}
 function dvi_load(file) {
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
@@ -120,7 +39,7 @@ function dvi_load(file) {
         var insts = parse_dvi(arr);
         dvi = rejoin_chars(grouping(insts));
         dvi_curr_page = 0;
-        show_page(dvi.pages[0], dvi.font_info);
+        show_page_0();
     });
 }
 
@@ -143,21 +62,12 @@ function dvi_keyevent() {
     }
 }
 
-function delta(dh, dv) {
-    var s = "";
-    if (dh > 5) s += sprintf("→%.1f", dh);
-    else if (dh < -5) s += sprintf("←%.1f", -dh);
-    if (dv > 5) s += sprintf("↓%.1f", dv);
-    else if (dv < -5) s += sprintf("↑%.1f", -dv);
-    if (s != "") s = "<font size=2 color=\"#cccccc\">{"+ s + "}</font>";
-    return s;
-}
-
 function rule(h, v, width, height, dir, color) {
-    var left = 72.27 + h / 65536,
-        bottom = 72.27 + v / 65536, top,
-        wd = width / 65536,
-        ht = height / 65536;
+    var left   = 72 + h / 65536 * PT72_PER_PT,
+        bottom = 72 + v / 65536 * PT72_PER_PT,
+        top,
+        wd = width / 65536 * PT72_PER_PT,
+        ht = height / 65536 * PT72_PER_PT;
     // console.log(sprintf("rule %.1f %.1f %.1f %.1f %d", left, bottom, wd,ht, dir));
     if (dir == 0) {
         top = bottom - ht;
@@ -178,29 +88,56 @@ function rule(h, v, width, height, dir, color) {
 
 function puts(h, v, width, dir, font_info, str, color) {
     var writing_mode = (dir == 0) ? '' : 'vertical-rl';
-    var x = 72.27 + h / 65536, y = 72.27 + v / 65536, w = width / 65536;
-    var pt = font_info.s / 65536;
+    var x = 72 + h / 65536 * PT72_PER_PT,
+        y = 72 + v / 65536 * PT72_PER_PT,
+        w = width / 65536 * PT72_PER_PT;
+    var pt = font_info.s / 65536 * PT72_PER_PT;
+    var family = font_info.file;
+    if (family.match(/[^c]?min/)) {
+        pt *= JFM_SHRINK;
+        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
+    } else if (family.match(/goth/)) {
+        pt *= JFM_SHRINK;
+        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
+    } else {
+        family = "'" + family + "'";
+    }
+    // var pt = font_info.d / 65536;
+/*
+    if (font_info.d != font_info.s)
+        console.log(sprintf("%s: d=%.2f, s=%.2f", font_info.file, font_info.d/65536, font_info.s/65536));
+*/
     var css = {
         position: "absolute",
         border: "solid 0.5px",
         color: color,
-        // 'text-align': "justify",
-        font: sprintf("%.1fpt '%s'", pt, font_info.file)
+        'text-align': "justify",
+        'text-justify': "inter-ideograph",
+        'line-break': "none",
+//        'letter-spacing': "-1px",
+        'text-autospace': "none",
+        font: sprintf("%.1fpt %s", pt, family),
+        'white-space': "nowrap"
     };
-    var family = font_info.file.replace(/[1-9][0-9]*$/, "");
-    if (dir == 0) {
-        if (family == 'min' || family == 'goth') {
-            y -= pt * 0.95;
-        } else { 
-            y -= pt * 0.75;
-        }
 
+    var family_ = font_info.file.replace(/[1-9][0-9]*$/, "");
+    if (dir == 0) {
+        if (family_ == 'min' || family_ == 'goth') {
+            // height 0.916443, width 0.962216
+            y -= pt * 0.9; // * 0.8; //0.916443;
+            // css['-webkit-transform'] = "scale(0.962216, 0.916443)";
+            // css['-moz-transform'] = "scale(0.962216, 0.916443)";
+        } else { 
+            y -= pt * 0.63; // * 0.5; // 666;
+        }
+        
         css.top = sprintf("%.2fpt", y);
         css.left = sprintf("%.2fpt", x);
-        //css.width = sprintf("%.2fpt", w);
+        css.width = sprintf("%.2fpt", w);
     } else {
-        if (family == 'tmin' || family == 'tgoth') {
+        if (family_ == 'tmin' || family_ == 'tgoth') {
             x -= pt * 0.2;
+            // y -= pt * 0.5;
             //x -= pt * 0.5;
         } else {
             x -= pt * 0.3;
@@ -221,8 +158,19 @@ function puts(h, v, width, dir, font_info, str, color) {
 }
 
 function strWidth(font_info, str) {
-    var pt = font_info.s / 65536;
-    var font_desc = sprintf("%.1fpt '%s'", pt, font_info.file);
+    var family = font_info.file;
+    var pt = font_info.s / 65536 * PT72_PER_PT;
+    if (family.match(/[^c]?min/)) {
+        pt *= JFM_SHRINK;
+        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
+    } else if (family.match(/goth/)) {
+        pt *= JFM_SHRINK;
+        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
+    } else {
+        family = "'" + family + "'";
+    }
+    var font_desc = sprintf("%.1fpt %s", pt*10, family);
+    // console.log("font_desc = "+ font_desc);
     var canvas = document.getElementById('metrics');
     if (canvas.getContext) {
         var context = canvas.getContext('2d');
@@ -230,7 +178,8 @@ function strWidth(font_info, str) {
         // context['writing-mode'] = 'vertical-rl';
         // context['-webkit-writing-mode'] = 'vertical-rl';
         var metrics = context.measureText(str);
-        var width = metrics.width / PX_PER_PT;
+        var width = metrics.width / PX_PER_PT / PT72_PER_PT / 10;
+        // console.log(sprintf("strWidth(%s) = %.2f", str, width));
         return width;
     }
     return undefined;
@@ -248,14 +197,44 @@ function show_page(page, font_info) {
     // var font_info = {};
     var dir = 0;
     var font_size = 10 * 65536;
+    var tfm = undefined;
 
     for (var j in page.insts) {
         var inst = page.insts[j];
         switch (inst.op) {
+        case 'set': // orig
+            var width = 0;
+            if (tfm == undefined) {
+                width = strWidth(font_info[f], inst._) * 65536;
+            } else {
+                var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
+                // console.log("info.width of "+ inst._ +" = "+ info.w);
+                width += info.w * 65536;
+            }
+            puts(h, vofs+v, width, dir, font_info[f], inst._, color);
+            if (dir == 0) {
+                h += width;
+            } else {
+                v += width;
+            }
+            break;
         case 'sets':
             var str = inst.s;
-            console.log("\""+ str +"\"");
-            var width = strWidth(font_info[f], str) * 65536;
+            var width = 0;
+            if (tfm == undefined) {
+                width = strWidth(font_info[f], str) * 65536;
+                width -= strWidth(font_info[f], " ") * 65536 * inst.sp;
+            } else {
+                for (var i in inst.c) {
+                    var c = inst.c[i];
+                    var info = (tfm[c] == undefined) ? tfm[0] : tfm[c];
+                    width += info.w * 65536;
+                }
+                var sp = (tfm[0x20] == undefined) ? tfm[0] : tfm[0x20];
+                width -= info.w * 65536 * inst.sp;
+            }
+            width += inst.w;
+
             puts(h, vofs+v, width, dir, font_info[f], str, color);
             if (dir == 0) {
                 h += width; // font_size * 0.6;
@@ -290,75 +269,56 @@ function show_page(page, font_info) {
             var last_h = h, last_v = v;
             var tmp = st.pop();
             h = tmp[0]; v = tmp[1]; w = tmp[2]; x = tmp[3]; y = tmp[4]; z = tmp[5]; dir = tmp[6];
-            var dh = h - last_h, dv = v - last_v;
-            // dumped += "\n" + delta(dh, dv);
             break;
         case 'right':
             if (dir == 0) {
                 h += inst.b;
-                var dh = inst.b / 65536;
-                // dumped += delta(dh, 0);
             } else {
                 v += inst.b;
-                var dv = inst.b / 65536;
             }
             break;
         case 'w':
             if (inst.b) w = inst.b;
             if (dir == 0) {
                 h += w;
-                var dh = w / 65536;
-                // dumped += delta(dh, 0);
             } else {
                 v += w;
-                var dv = w / 65536;
             }
             break;
         case 'x':
             if (inst.b) x = inst.b;
             if (dir == 0) {
                 h += x;
-                var dh = w / 65536;
-                // dumped += delta(dh, 0);
             } else {
                 v += x;
-                var dv = w / 65536;
             }
             break;
         case 'down':
             if (dir == 0) {
                 v += inst.a;
-                // var dv = inst.a / 65536;
-                // dumped += delta(0, dv);
             } else {
                 h -= inst.a;
-                // var dh = -inst.a / 65536;
             }
             break;
         case 'y':
             if (inst.a) y = inst.a;
             if (dir == 0) {
                 v += y;
-                // var dv = y / 65536;
-                // dumped += delta(0, dv);
             } else {
                 h -= y;
-                // var dh = -y / 65536;
             }
             break;
         case 'z':
             if (inst.a) z = inst.a;
             if (dir == 0) {
                 v += z;
-                // var dv = z / 65536;
-                // dumped += delta(0, dv);
             } else {
                 h -= z;
-                // var dh = -z / 65536;
             }
             break;
         case 'fnt':
             f = inst.k;
+            tfm = tfms[font_info[f].file];
             // var info = font_info[inst.k];
             // font_size = info.d;
             // dumped += "<font size=2 color=\"#9999cc\">{"+ info.file +"}</font>";
@@ -423,17 +383,18 @@ function rejoin_chars(document) {
         st = [];
 
         var rejoined_insts = [];
-        var sets_c = [], sets_s = "", sets_w = 0;
+        var sets_c = [], sets_s = "", sets_w = 0, sets_sp = 0;
         for (var j in page.insts) {
             var inst = page.insts[j];
             // console.log("> "+ JSON.stringify(inst));
             var skip = false;
             switch (inst.op) {
             case 'set':
-                sets_c.push(inst.c);
-                sets_s += inst._;
-                // sets_w += 0;
-                skip = true;
+                if (DO_REJOIN) {
+                    sets_c.push(inst.c);
+                    sets_s += inst._;
+                    skip = true;
+                }
                 break;
             case 'set_rule':
                 if (dir == 0) {
@@ -446,6 +407,11 @@ function rejoin_chars(document) {
                 st.push([h,v,w,x,y,z,dir]);
                 break;
             case 'pop':
+                if (sets_c.length > 0) {
+                    rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
+                    sets_c = []; sets_s = ""; sets_w = 0; sets_sp = 0;
+                    // console.log("pop occurred when sets_c# = "+ sets_c.length);
+                }
                 var last_h = h, last_v = v;
                 var tmp = st.pop();
                 h = tmp[0]; v = tmp[1]; w = tmp[2]; x = tmp[3]; y = tmp[4]; z = tmp[5]; dir = tmp[6];
@@ -458,8 +424,7 @@ function rejoin_chars(document) {
                     v += inst.b;
                 }
                 // skipping
-/**/
-                if (f != undefined && sets_c.length > 0) {
+                if (REJOIN_W && f != undefined && sets_c.length > 0) {
                     // console.log(f);
                     // console.log(JSON.stringify(document.font_info[f]));
                     var em = Math.floor(4 * inst.b / document.font_info[f].s);
@@ -467,13 +432,12 @@ function rejoin_chars(document) {
                         if (em >= 1) { // for (var k = 0; k < em; k++) {
                             sets_c.push(0x20);
                             sets_s += ' ';
-                            sets_w -= document.font_info[f].s / 2;
+                            sets_sp++;
                         }
                         sets_w += inst.b;
                         skip = true;
                     }
                 }
-/**/
                 break;
             case 'w':
                 if (inst.b) w = inst.b;
@@ -483,20 +447,18 @@ function rejoin_chars(document) {
                     v += w;
                 }
                 // skipping
-/**/
-                if (f != undefined && sets_c.length > 0) {
+                if (REJOIN_W && f != undefined && sets_c.length > 0) {
                     var em = Math.floor(4 * w / document.font_info[f].s);
                     if (em >= -1) {
                         if (em >= 1) { // for (var k = 0; k < em; k++) {
                             sets_c.push(0x20);
                             sets_s += ' ';
-                            sets_w -= document.font_info[f].s / 2;
+                            sets_sp++;
                         }
                         sets_w += w;
                         skip = true;
                     }
                 }
-/**/
                 break;
             case 'x':
                 if (inst.b) x = inst.b;
@@ -506,20 +468,18 @@ function rejoin_chars(document) {
                     v += x;
                 }
                 // skipping
-/**/
-                if (f != undefined && sets_c.length > 0) {
+                if (REJOIN_W && f != undefined && sets_c.length > 0) {
                     var em = Math.floor(4 * x / document.font_info[f].s);
                     if (em >= -1) {
                         if (em >= 1) { // for (var k = 0; k < em; k++) {
                             sets_c.push(0x20);
                             sets_s += ' ';
-                            sets_w -= document.font_info[f].s / 2;
+                            sets_sp++;
                         }
                         sets_w += x;
                         skip = true;
                     }
                 }
-/**/
                 break;
             case 'down':
                 if (dir == 0) {
@@ -561,14 +521,14 @@ function rejoin_chars(document) {
             if (skip) continue;
 
             if (sets_c.length > 0) {
-                rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w});
-                sets_c = []; sets_s = ""; sets_w = 0;
+                rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
+                sets_c = []; sets_s = ""; sets_w = 0; sets_sp = 0;
             }
             rejoined_insts.push(inst);
         } // endfor
 
         if (sets_c.length > 0) {
-            rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w});
+            rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
         }
         page.insts = rejoined_insts;
         document.pages[i] = page;
@@ -611,7 +571,10 @@ function grouping(insts) {
             break;
 
         case 'fnt_def':
-            document.font_info[inst.k] = inst;
+            if (document.font_info[inst.k] == undefined) {
+                document.font_info[inst.k] = inst;
+                tfm_load(inst.file);
+            }
             break;
 
         default:
