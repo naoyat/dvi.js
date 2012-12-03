@@ -8,7 +8,6 @@
   <script type="text/javascript" src="js/sprintf.js" charset="utf-8"></script>
   <script type="text/javascript" src="js/binary.js" charset="utf-8"></script>
   <script type="text/javascript" src="js/tfm-loader.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/dvi-parser.js" charset="utf-8"></script>
 
   <link rel="stylesheet" type="text/css" href="texfonts.css"></style>
 </head>
@@ -17,10 +16,9 @@
 <div id="out"></div>
 <canvas id="metrics" width="0" height="0" style="visibility:hidden; position:absolute;"></canvas>
 
-
 <script type="text/javascript">
 if (location.search.length > 1) {
-    dvi_load("samples/"+ location.search.substr(1));
+    tfm_load(location.search.substr(1));
 }
 </script>
 
