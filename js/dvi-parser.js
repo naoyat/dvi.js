@@ -234,7 +234,7 @@ function show_page(page, font_info) {
             } else {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
-                width += info.w * 65536;
+                width += info.w * font_info[f].scale * 65536;
                 
                 var r = (font_info[f].s / 65536) / 10; // 9.1644287109375;
                 var th = tfm.x_height * font_info[f].scale / r;
