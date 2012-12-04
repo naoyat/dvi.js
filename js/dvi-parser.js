@@ -23,7 +23,7 @@ function render_dvi(arr) {
 
 function show_page_0() {
     if (tfm_loading_count > 0) {
-        console.log("setTimeout..");
+        // console.log("setTimeout..");
         setTimeout(show_page_0, 0.1);
     } else {
         show_page(dvi.pages[0], dvi.font_info);
@@ -36,6 +36,7 @@ function dvi_load(file) {
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         // console.log(hexdump(arr, 0, arr.length));
+
         var insts = parse_dvi(arr);
         dvi = rejoin_chars(grouping(insts));
         dvi_curr_page = 0;
@@ -93,10 +94,10 @@ function puts(h, v, width, dir, font_info, str, color) {
         w = width / 65536 * PT72_PER_PT;
     var pt = font_info.s / 65536 * PT72_PER_PT;
     var family = font_info.file;
-    if (family.match(/[^c]?min/)) {
+    if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
         pt *= JFM_SHRINK;
         family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
-    } else if (family.match(/goth/)) {
+    } else if (family.match(/goth/) || family.match(/jisg/)) {
         pt *= JFM_SHRINK;
         family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
     } else {
@@ -109,7 +110,7 @@ function puts(h, v, width, dir, font_info, str, color) {
 */
     var css = {
         position: "absolute",
-        border: "solid 0.5px",
+        // border: "solid 0.5px",
         color: color,
         'text-align': "justify",
         'text-justify': "inter-ideograph",
@@ -122,7 +123,8 @@ function puts(h, v, width, dir, font_info, str, color) {
 
     var family_ = font_info.file.replace(/[1-9][0-9]*$/, "");
     if (dir == 0) {
-        if (family_ == 'min' || family_ == 'goth') {
+        if (family_ == 'min' || family_ == 'goth'
+            || family_ == 'jis' || family_ == 'jisg') {
             // height 0.916443, width 0.962216
             y -= pt * 0.9; // * 0.8; //0.916443;
             // css['-webkit-transform'] = "scale(0.962216, 0.916443)";
@@ -160,10 +162,10 @@ function puts(h, v, width, dir, font_info, str, color) {
 function strWidth(font_info, str) {
     var family = font_info.file;
     var pt = font_info.s / 65536 * PT72_PER_PT;
-    if (family.match(/[^c]?min/)) {
+    if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
         pt *= JFM_SHRINK;
         family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
-    } else if (family.match(/goth/)) {
+    } else if (family.match(/goth/) || family.match(/jisg/)) {
         pt *= JFM_SHRINK;
         family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
     } else {
@@ -211,6 +213,11 @@ function show_page(page, font_info) {
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
                 width += info.w * 65536;
             }
+            /*
+            if (inst.c < 32 || (128 <= inst.c && inst.c < 256)) {
+                console.log("putting 8bit char "+ p0x(2, inst.c) + " w/ "+ font_info[f].file);
+            }
+             */
             puts(h, vofs+v, width, dir, font_info[f], inst._, color);
             if (dir == 0) {
                 h += width;
