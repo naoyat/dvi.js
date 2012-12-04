@@ -8,7 +8,8 @@
 function getBinary(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
-    if (xhr.hasOwnProperty('responseType')) { // ArrayBuffer - fx & chrome
+//    if (xhr.hasOwnProperty('responseType')) { // ArrayBuffer - fx & chrome
+    if ('responseType' in xhr) {
         xhr.responseType = 'arraybuffer';
     } else { // if not ArrayBuffer, must for binary
         xhr.overrideMimeType('text/plain; charset=x-user-defined');
@@ -16,7 +17,8 @@ function getBinary(url, callback) {
     xhr.onreadystatechange = function(){
         if (xhr.readyState == 4 && xhr.status == 200) {
             // fx & chrome handle ArrayBuffer very different
-            var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
+            // var responseArrayBuffer = xhr.hasOwnProperty('responseType') && xhr.responseType === 'arraybuffer',
+            var responseArrayBuffer = ('responseType' in xhr) && xhr.responseType === 'arraybuffer',
                 mozResponseArrayBuffer = 'mozResponseArrayBuffer' in xhr,
                 bin_data = mozResponseArrayBuffer ? xhr.mozResponseArrayBuffer : responseArrayBuffer ? xhr.response : xhr.responseText;
             callback(bin_data);
