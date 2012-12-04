@@ -1,10 +1,12 @@
 var DO_REJOIN = false;
 //var DO_REJOIN = true;
 var REJOIN_W = true;
+var BOX_MODE = false;
 
 var PX_PER_PT = 1.3325;
 var PT72_PER_PT = 72 / 72.27;
 var JFM_SHRINK = 0.962216;
+var JFM_HSHRINK = 0.9164428;
 
 var dvi = undefined;
 var dvi_curr_page = 0;
@@ -89,18 +91,20 @@ function rule(h, v, width, height, dir, color) {
     }).appendTo('#out');
 }
 
-function puts(h, v, width, dir, font_info, str, color) {
+function puts(h, v, width, height, dir, font_info, str, color) {
     var writing_mode = (dir == 0) ? '' : 'vertical-rl';
     var x = 72 + h / 65536 * PT72_PER_PT,
         y = 72 + v / 65536 * PT72_PER_PT,
-        w = width / 65536 * PT72_PER_PT;
+        w = width / 65536 * PT72_PER_PT,
+        ht = height / 65536 * PT72_PER_PT;
+    // var pt = font_info.s / 0.9164428 / 65536 * PT72_PER_PT;
     var pt = font_info.s / 65536 * PT72_PER_PT;
     var family = font_info.file;
     if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
-        pt *= JFM_SHRINK;
+        pt *= JFM_HSHRINK;
         family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
     } else if (family.match(/goth/) || family.match(/jisg/)) {
-        pt *= JFM_SHRINK;
+        pt *= JFM_HSHRINK;
         family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
     } else {
         family = "'" + family + "'";
@@ -112,7 +116,6 @@ function puts(h, v, width, dir, font_info, str, color) {
 */
     var css = {
         position: "absolute",
-        // border: "solid 0.5px",
         color: color,
         'text-align': "justify",
         'text-justify': "inter-ideograph",
@@ -120,24 +123,34 @@ function puts(h, v, width, dir, font_info, str, color) {
 //        'letter-spacing': "-1px",
         'text-autospace': "none",
         font: sprintf("%.1fpt %s", pt, family),
-        'white-space': "nowrap"
+        'white-space': "nowrap",
+        // 'display': 'inline-block',
+        // 'line-height': "normal",
+        // 'vertical-align': 'baseline'
     };
+
+    if (BOX_MODE) {
+        css.border = "solid 1px #9999cc";
+        css.color = "#333366";
+    }
 
     var family_ = font_info.file.replace(/[1-9][0-9]*$/, "");
     if (dir == 0) {
         if (family_ == 'min' || family_ == 'goth'
             || family_ == 'jis' || family_ == 'jisg') {
             // height 0.916443, width 0.962216
-            y -= pt * 0.9; // * 0.8; //0.916443;
+//            y -= pt * 0.9; // * 0.8; //0.916443;
             // css['-webkit-transform'] = "scale(0.962216, 0.916443)";
             // css['-moz-transform'] = "scale(0.962216, 0.916443)";
         } else { 
-            y -= pt * 0.63; // * 0.5; // 666;
+//            y -= pt * 0.63; // * 0.5; // 666;
         }
+        y -= ht;
         
         css.top = sprintf("%.2fpt", y);
         css.left = sprintf("%.2fpt", x);
-        css.width = sprintf("%.2fpt", w);
+        css.width = "3px"; //sprintf("%.2fpt", w);
+        css.height = "0px"; //sprintf("%.2fpt", pt);
     } else {
         if (family_ == 'tmin' || family_ == 'tgoth') {
             x -= pt * 0.2;
@@ -163,6 +176,7 @@ function puts(h, v, width, dir, font_info, str, color) {
         css['-o-writing-mode'] = 'vertical-rl';
     }
 
+//    $('<div />', {
     $('<span />', {
         text: str
     }).css(css).appendTo('#out');
@@ -207,27 +221,34 @@ function show_page(page, font_info) {
     var color = "Black", colorst = [];
     // var font_info = {};
     var dir = 0;
-    var font_size = 10 * 65536;
     var tfm = undefined;
 
     for (var j in page.insts) {
         var inst = page.insts[j];
         switch (inst.op) {
         case 'set': // orig
-            var width = 0;
+            var width = 0, height = 0;
             if (tfm == undefined) {
                 width = strWidth(font_info[f], inst._) * 65536;
+                height = font_info[f].s;
             } else {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
                 width += info.w * 65536;
+                
+                var r = (font_info[f].s / 65536) / 10; // 9.1644287109375;
+                var th = tfm.x_height * font_info[f].scale / r;
+                // var dh = th + (9.1644287109375 - th)/3;
+                var dh = th + (10 - th)/2;
+                height = dh * r * 65536;
+                // console.log(tfm.font_file + ": info.w = "+ info.w +", info.x_height = "+ tfm.x_height)
             }
             /*
             if (inst.c < 32 || (128 <= inst.c && inst.c < 256)) {
                 console.log("putting 8bit char "+ p0x(2, inst.c) + " w/ "+ font_info[f].file);
             }
              */
-            puts(h, vofs+v, width, dir, font_info[f], inst._, color);
+            puts(h, vofs+v, width, height, dir, font_info[f], inst._, color);
             if (dir == 0) {
                 h += width;
             } else {
@@ -236,26 +257,28 @@ function show_page(page, font_info) {
             break;
         case 'sets':
             var str = inst.s;
-            var width = 0;
+            var width = 0, height = 0;
             if (tfm == undefined) {
                 width = strWidth(font_info[f], str) * 65536;
                 width -= strWidth(font_info[f], " ") * 65536 * inst.sp;
+                height = font_info[f].s;
             } else {
                 for (var i in inst.c) {
                     var c = inst.c[i];
                     var info = (tfm[c] == undefined) ? tfm[0] : tfm[c];
                     width += info.w * 65536;
+                    height = info.h * 65536;
                 }
                 var sp = (tfm[0x20] == undefined) ? tfm[0] : tfm[0x20];
                 width -= info.w * 65536 * inst.sp;
             }
             width += inst.w;
 
-            puts(h, vofs+v, width, dir, font_info[f], str, color);
+            puts(h, vofs+v, width, height, dir, font_info[f], str, color);
             if (dir == 0) {
-                h += width; // font_size * 0.6;
+                h += width;
             } else {
-                v += width; // font_size * 0.6;
+                v += width;
             }
             break;
         case 'set_rule':
@@ -336,7 +359,6 @@ function show_page(page, font_info) {
             f = inst.k;
             tfm = tfms[font_info[f].file];
             // var info = font_info[inst.k];
-            // font_size = info.d;
             // dumped += "<font size=2 color=\"#9999cc\">{"+ info.file +"}</font>";
             break;
         case 'fnt_def':
@@ -588,6 +610,7 @@ function grouping(insts) {
 
         case 'fnt_def':
             if (document.font_info[inst.k] == undefined) {
+                inst.scale = inst.s / inst.d;
                 document.font_info[inst.k] = inst;
                 tfm_load(inst.file);
             }

@@ -156,6 +156,13 @@ function parse_tfm(arr, font_file) {
         }
         tfm2[c] = info;
     }
+
+    tfm2.font_file = font_file;
+    tfm2.design_size = tfm.design_size;
+
+    tfm2.x_height = tfm.param[4] * ds / 1048576;
+    tfm2.quad = tfm.param[5] * ds / 1048576;
+
     return tfm2;
 }
 
@@ -306,6 +313,13 @@ function parse_jfm(arr, font_file) {
         }
         jfm2[code] = info;
     }
+
+    jfm2.font_file = font_file;
+    jfm2.design_size = jfm.design_size;
+
+    jfm2.x_height = jfm.param[4] * ds / 1048576;
+    jfm2.quad = jfm.param[5] * ds / 1048576;
+
     // console.log("JFM2 "+ JSON.stringify(jfm2));
     return jfm2;
 }
