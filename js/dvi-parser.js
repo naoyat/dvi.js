@@ -9,6 +9,8 @@ var JFM_SHRINK = 0.962216;
 var dvi = undefined;
 var dvi_curr_page = 0;
 
+document.onkeydown = dvi_keyevent;
+
 /*
 function render_dvi(arr) {
     var insts = parse_dvi(arr);
@@ -44,9 +46,9 @@ function dvi_load(file) {
     });
 }
 
-function dvi_keyevent() {
-    console.log("keyCode = "+ event.keyCode);
-    switch (event.keyCode) {
+function dvi_keyevent(evt) {
+    // console.log("keyCode = "+ evt.keyCode);
+    switch (evt.keyCode) {
         case 32: // space
             break;
         case 37: case 38: case 72: case 75: case 80: // left up h k p
@@ -150,8 +152,15 @@ function puts(h, v, width, dir, font_info, str, color) {
         css.left = sprintf("%.2fpt", x);
         css.width = sprintf("%.2fpt", pt);
         css.height = sprintf("%.2fpt", w*2);
+        // IE
         css['writing-mode'] = 'vertical-rl';
+        // Firefox
+        css['-moz-writing-mode'] = 'vertical-rl'; // 効かない
+        // css['-moz-transform'] =  "translate(0em, -0.3em) rotate(0deg)";
+        // Chrome
         css['-webkit-writing-mode'] = 'vertical-rl';
+        // Opera
+        css['-o-writing-mode'] = 'vertical-rl';
     }
 
     $('<span />', {
