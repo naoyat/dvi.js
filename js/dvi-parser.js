@@ -12,6 +12,7 @@ var dvi = undefined;
 var dvi_curr_page = 0;
 
 document.onkeydown = dvi_keyevent;
+var page_mode = 0;
 
 /*
 function render_dvi(arr) {
@@ -28,9 +29,15 @@ function render_dvi(arr) {
 function show_page_0() {
     if (tfm_loading_count > 0) {
         // console.log("setTimeout..");
+        if (page_mode == 0) {
+            $('#out').children().remove();
+            $('<span />', { text: "now rendering..." }).css({ "text-decoration": "blink" }).appendTo('#out');
+        }
+        ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
         show_page(dvi.pages[0], dvi.font_info);
+        page_mode = -1;
     }
 }
 function dvi_load(file) {
