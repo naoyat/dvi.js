@@ -81,8 +81,6 @@ function rule(h, v, width, height, dir, color) {
         wd = width / 65536 * PT72_PER_PT,
         ht = height / 65536 * PT72_PER_PT;
 
-    if (wd < 0.8) wd = 0.8;
-    if (ht < 0.8) ht = 0.8;
     // console.log(sprintf("rule %.1f %.1f %.1f %.1f %d", left, bottom, wd,ht, dir));
     if (dir == 0) {
         top = bottom - ht;
@@ -97,7 +95,9 @@ function rule(h, v, width, height, dir, color) {
         top: sprintf("%.2fpt", top),
         left: sprintf("%.2fpt", left),
         width: sprintf("%.2fpt", wd),
-        height: sprintf("%.2fpt", ht)
+        height: sprintf("%.2fpt", ht),
+        'min-width': "1px",
+        'min-height': "1px"
     }).appendTo('#out');
 }
 
