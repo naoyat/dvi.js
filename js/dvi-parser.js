@@ -81,8 +81,8 @@ function rule(h, v, width, height, dir, color) {
         wd = width / 65536 * PT72_PER_PT,
         ht = height / 65536 * PT72_PER_PT;
 
-    if (wd < 0.5) wd = 0.5;
-    if (ht < 0.5) ht = 0.5;
+    if (wd < 0.8) wd = 0.8;
+    if (ht < 0.8) ht = 0.8;
     // console.log(sprintf("rule %.1f %.1f %.1f %.1f %d", left, bottom, wd,ht, dir));
     if (dir == 0) {
         top = bottom - ht;
