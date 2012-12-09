@@ -12,6 +12,7 @@ var dvi = undefined;
 var dvi_curr_page = 0;
 
 document.onkeydown = dvi_keyevent;
+$(window).flickable();
 var page_mode = 0;
 
 /*
@@ -291,8 +292,8 @@ function show_page(page, font_info) {
                     /// xh = 6.1/10 * scaled_size;
                     var xh = tfm.x_height / (design_size / 10);
                     // h_ = (7.77587890625 + xh*.9)/9.1644287109375/2 * scaled_size;
-                    h_ = (8.484848484 + xh)/10/2 * scaled_size;
-                    // 6.1は適当
+                    h_ = (8.484848484 + xh*1.25)/10/2 * scaled_size;
+                    // 1.25は適当
                 }
                 height = h_ * 65536;
             }
