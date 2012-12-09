@@ -282,15 +282,17 @@ function show_page(page, font_info) {
                 // font_info[f].scale : TFMからの拡大率
 
                 //var xh = 9.1644287109375/10 * scaled_ptsize;
-                var xh;
+                var h_;
                 if (tfm.type == 'jfm') {
-                    xh = 7.77587890625/9.1644287109375 * scaled_size;
+                    h_ = 7.77587890625/9.1644287109375 * scaled_size;
                     //xh = tfm.x_height * 1.44 * font_info[f].scale;
                 } else {
-                    xh = 6.1/10 * scaled_size;
+                    /// xh = 6.1/10 * scaled_size;
+                    var xh = tfm.x_height / (design_size / 10);
+                    h_ = (7.77587890625 + xh*.87)/9.1644287109375/2 * scaled_size;
                     // 6.1は適当
                 }
-                height = xh * 65536;
+                height = h_ * 65536;
             }
             if (dir == 0) {
                 puts(h+adjust, vofs+v, width, height, dir, font_info[f], inst._, color);
