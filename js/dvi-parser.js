@@ -243,11 +243,6 @@ function show_page(page, font_info) {
                 height = dh * r * 65536;
                 // console.log(tfm.font_file + ": info.w = "+ info.w +", info.x_height = "+ tfm.x_height)
             }
-            /*
-            if (inst.c < 32 || (128 <= inst.c && inst.c < 256)) {
-                console.log("putting 8bit char "+ p0x(2, inst.c) + " w/ "+ font_info[f].file);
-            }
-             */
             puts(h, vofs+v, width, height, dir, font_info[f], inst._, color);
             if (dir == 0) {
                 h += width;
@@ -627,6 +622,13 @@ function grouping(insts) {
     return document;
 }
 
+function bakoma(c) {
+    if (c <= 0x09) return 0xa1 + c;
+    if (c <= 0x20) return 0xad + (c - 0x0a);
+    if (c <= 0x7e) return c;
+    return 0xc4;
+}
+
 function parse_dvi(arr) {
     var len = arr.length;
     var code = [];
@@ -635,7 +637,7 @@ function parse_dvi(arr) {
         var op = arr[ptr++];
         if (op < 128) { //   0..127
             var c = op;
-            code.push({op:'set', c:c, _:String.fromCharCode(c)});
+            code.push({op:'set', c:c, _:String.fromCharCode(bakoma(c))});
         } else if (op <= 170) { // 128..170
             switch (op) {
             case 128: case 129: case 130: case 131: // set1 .. set4
