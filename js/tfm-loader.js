@@ -157,6 +157,7 @@ function parse_tfm(arr, font_file) {
         tfm2[c] = info;
     }
 
+    tfm2.type = 'tfm';
     tfm2.font_file = font_file;
     tfm2.design_size = tfm.design_size;
 
@@ -314,12 +315,14 @@ function parse_jfm(arr, font_file) {
         jfm2[code] = info;
     }
 
+    jfm2.type = 'jfm';
     jfm2.font_file = font_file;
     jfm2.design_size = jfm.design_size;
 
     jfm2.x_height = jfm.param[4] * ds / 1048576;
     jfm2.quad = jfm.param[5] * ds / 1048576;
 
+    jfm2.x_height *= (7.77587890625 / 9.1644287109375);
     // console.log("JFM2 "+ JSON.stringify(jfm2));
     return jfm2;
 }
