@@ -12,6 +12,7 @@ var dvi = undefined;
 var dvi_curr_page = 0;
 
 document.onkeydown = dvi_keyevent;
+$(window).flickable();
 var page_mode = 0;
 
 /*
