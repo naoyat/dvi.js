@@ -223,6 +223,12 @@ function show_page(page, font_info) {
     var dir = 0;
     var tfm = undefined;
 
+    var lya = { 0x2421:1, 0x2423:1, 0x2425:1, 0x2427:1, 0x2429:1, // ぁぃぅぇぉ
+                0x2443:1, 0x2463:1, 0x2465:1, 0x2467:1, 0x246E:1, // っゃゅょゎ
+                0x2521:1, 0x2523:1, 0x2525:1, 0x2527:1, 0x2529:1, // ァィゥェォ
+                0x2543:1, 0x2563:1, 0x2565:1, 0x2567:1, 0x256E:1, // ッャュョヮ
+                0x2575:1, 0x2576:1 }; // ヵヶ
+
     for (var j in page.insts) {
         var inst = page.insts[j];
         switch (inst.op) {
@@ -235,7 +241,30 @@ function show_page(page, font_info) {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
                 width += info.w * font_info[f].scale * 65536;
-                
+                var adjust = 0;
+                if (inst.c > 256 && info.w < tfm[0].w) {
+                    if (inst.c == 0x2126) { // ・
+                        adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                    } else if (lya[inst.c] != undefined) { // ぁぃぅぇぉゃゅょっ
+                        if (dir == 0) { // 横
+                            adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                        } else { // 縦
+                            adjust = (info.w - tfm[0].w)/2.5 * font_info[f].scale * 65536;
+                        }
+                    } else if ((0x2146 <= inst.c && inst.c <= 0x215B) & !(inst.c & 1)) { // open-paren
+                        adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
+                    }
+/*
+                    if (adjust != 0) {
+                        console.log(sprintf("width of %s: %.2f/%.2f * %.2f = %.2f; adjust = %.2f",
+                                            inst._,
+                                            info.w, tfm[0].w,
+                                            font_info[f].scale,
+                                            info.w * font_info[f].scale,
+                                            adjust));
+                    }
+*/
+                }
                 var r = (font_info[f].s / 65536) / 10; // 9.1644287109375;
                 var th = tfm.x_height * font_info[f].scale / r;
                 // var dh = th + (9.1644287109375 - th)/3;
@@ -243,10 +272,11 @@ function show_page(page, font_info) {
                 height = dh * r * 65536;
                 // console.log(tfm.font_file + ": info.w = "+ info.w +", info.x_height = "+ tfm.x_height)
             }
-            puts(h, vofs+v, width, height, dir, font_info[f], inst._, color);
             if (dir == 0) {
+                puts(h+adjust, vofs+v, width, height, dir, font_info[f], inst._, color);
                 h += width;
             } else {
+                puts(h, vofs+v+adjust, width, height, dir, font_info[f], inst._, color);
                 v += width;
             }
             break;
