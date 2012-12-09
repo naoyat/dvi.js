@@ -133,7 +133,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
 //        'letter-spacing': "-1px",
         'text-autospace': "none",
         font: sprintf("%.1fpt %s", pt, family),
-        'white-space': "nowrap",
+        'white-space': "nowrap"
         // 'display': 'inline-block',
         // 'line-height': "normal",
         // 'vertical-align': 'baseline'
@@ -275,11 +275,34 @@ function show_page(page, font_info) {
                     }
 */
                 }
-                var r = (font_info[f].s / 65536) / 10; // 9.1644287109375;
-                var th = tfm.x_height * font_info[f].scale / r;
+
+                var scaled_ptsize = font_info[f].s / 65536;
+                var r = scaled_ptsize / 10;
+
+                var xh;
+                if (tfm.type == 'tfm') {
+                    xh = tfm.x_height * 1.6 * font_info[f].scale;
+                    // 1.6は根拠なし
+                } else {
+                    xh = 9.1644287109375/10 * scaled_ptsize;
+                    // xh = 7.77587890625/10 * scaled_ptsize;
+                }
+                /*
+                if (r != 1 && tfm.type == 'jfm')
+                    console.log(sprintf("%s) r=%.2f scaled_ptsize=%.2f scale=%.2f xh=%.2f file=%s",
+                                        tfm.type,
+                                        r, scaled_ptsize, font_info[f].scale, xh,
+                                        font_info[f].file));
+                 */
+                //var th = tfm.x_height * font_info[f].scale / r;
+                // var th = info.h * font_info[f].scale;// / r;
                 // var dh = th + (9.1644287109375 - th)/3;
-                var dh = th + (10 - th)/2;
-                height = dh * r * 65536;
+                // var dh = th + (10 - th)/2;
+                // var dh = th; // 9.164428;
+                // var th = 7.7 * font_info[f].scale;
+                //var dh = th + (9.164428 - th)/2;
+                // height = dh * r * 65536;
+                height = xh * 65536;
                 // console.log(tfm.font_file + ": info.w = "+ info.w +", info.x_height = "+ tfm.x_height)
             }
             if (dir == 0) {
