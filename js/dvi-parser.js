@@ -276,34 +276,21 @@ function show_page(page, font_info) {
 */
                 }
 
-                var scaled_ptsize = font_info[f].s / 65536;
-                var r = scaled_ptsize / 10;
+                var scaled_size = font_info[f].s / 65536; // ポイント数
+                var design_size = font_info[f].d / 65536; // デザイン・サイズ
+                var r = scaled_size / 10;
+                // font_info[f].scale : TFMからの拡大率
 
+                //var xh = 9.1644287109375/10 * scaled_ptsize;
                 var xh;
-                if (tfm.type == 'tfm') {
-                    xh = tfm.x_height * 1.6 * font_info[f].scale;
-                    // 1.6は根拠なし
+                if (tfm.type == 'jfm') {
+                    xh = 7.77587890625/9.1644287109375 * scaled_size;
+                    //xh = tfm.x_height * 1.44 * font_info[f].scale;
                 } else {
-                    xh = 9.1644287109375/10 * scaled_ptsize;
-                    // xh = 7.77587890625/10 * scaled_ptsize;
+                    xh = 6.1/10 * scaled_size;
+                    // 6.1は適当
                 }
-                /*
-                if (r != 1 && tfm.type == 'jfm')
-                    console.log(sprintf("%s) r=%.2f scaled_ptsize=%.2f scale=%.2f xh=%.2f file=%s",
-                                        tfm.type,
-                                        r, scaled_ptsize, font_info[f].scale, xh,
-                                        font_info[f].file));
-                 */
-                //var th = tfm.x_height * font_info[f].scale / r;
-                // var th = info.h * font_info[f].scale;// / r;
-                // var dh = th + (9.1644287109375 - th)/3;
-                // var dh = th + (10 - th)/2;
-                // var dh = th; // 9.164428;
-                // var th = 7.7 * font_info[f].scale;
-                //var dh = th + (9.164428 - th)/2;
-                // height = dh * r * 65536;
                 height = xh * 65536;
-                // console.log(tfm.font_file + ": info.w = "+ info.w +", info.x_height = "+ tfm.x_height)
             }
             if (dir == 0) {
                 puts(h+adjust, vofs+v, width, height, dir, font_info[f], inst._, color);
