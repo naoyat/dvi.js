@@ -180,6 +180,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         css['writing-mode'] = 'vertical-rl';
         // Firefox
         css['-moz-writing-mode'] = 'vertical-rl'; // 効かない
+        css['-moz-font-feature-settings'] = '"vert","vrt2"';
         // css['-moz-transform'] =  "translate(0em, -0.3em) rotate(0deg)";
         // Chrome
         css['-webkit-writing-mode'] = 'vertical-rl';
