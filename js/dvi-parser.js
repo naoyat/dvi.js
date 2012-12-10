@@ -253,18 +253,18 @@ function show_page(page, font_info) {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
                 width += info.w * font_info[f].scale * 65536;
-                var adjust = 0;
+                var h_adjust = 0, v_adjust = 0;
                 if (inst.c > 256 && info.w < tfm[0].w) {
                     if (inst.c == 0x2126) { // ・
-                        adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                        h_adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
                     } else if (lya[inst.c] != undefined) { // ぁぃぅぇぉゃゅょっ
                         if (dir == 0) { // 横
-                            adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                            h_adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
                         } else { // 縦
-                            adjust = (info.w - tfm[0].w)/2.5 * font_info[f].scale * 65536;
+                            h_adjust = (info.w - tfm[0].w)/2.5 * font_info[f].scale * 65536;
                         }
                     } else if ((0x2146 <= inst.c && inst.c <= 0x215B) & !(inst.c & 1)) { // open-paren
-                        adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
+                        h_adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
                     }
 /*
                     if (adjust != 0) {
@@ -283,26 +283,37 @@ function show_page(page, font_info) {
                 var r = scaled_size / 10;
                 // font_info[f].scale : TFMからの拡大率
 
+                var pt = scaled_size; // * PT72_PER_PT;
+
                 //var xh = 9.1644287109375/10 * scaled_ptsize;
-                var h_;
-                if (tfm.type == 'jfm') {
-                    // h_ = 7.77587890625/9.1644287109375 * scaled_size; // .848484
-                    h_ = 0.9 * scaled_size;
-                    //xh = tfm.x_height * 1.44 * font_info[f].scale;
+                if (dir == 0) {
+                    var h_ = 0;
+                    if (tfm.type == 'jfm') {
+                        // h_ = 7.77587890625/9.1644287109375 * scaled_size; // .848484
+                        // 日本語のフォントが上に1/6余白を採ってあるので、
+                        // height = 0.8484 なら (0.8484 + 1/6) だけ上げる必要がある
+                        h_ = pt * 0.96; // (0.8484848484 + 0.1666) * pt;
+                    } else {
+                        h_ = pt * 0.68;
+                    }
+                    height = h_ * 65536;
                 } else {
-                    /// xh = 6.1/10 * scaled_size;
-                    var xh = tfm.x_height / (design_size / 10);
-                    // h_ = (7.77587890625 + xh*.9)/9.1644287109375/2 * scaled_size;
-                    h_ = (8.484848484 + xh*1.25)/10/2 * scaled_size;
-                    // 1.25は適当
+                    var h_ = 0;
+                    if (tfm.type == 'jfm') {
+                        // h_ = pt * 0; // (0.8484848484 + 0.1666) * pt;
+                        v_adjust = -0.07*pt * 65536;
+                    } else {
+                        h_ = pt * 0.68;
+                        v_adjust = 0.1*pt * 65536;
+                    }
+                    //height = h_ * 65536;
                 }
-                height = h_ * 65536;
             }
             if (dir == 0) {
-                puts(h+adjust, vofs+v, width, height, dir, font_info[f], inst._, color);
+                puts(h+h_adjust, vofs+v+v_adjust, width, height, dir, font_info[f], inst._, color);
                 h += width;
             } else {
-                puts(h, vofs+v+adjust, width, height, dir, font_info[f], inst._, color);
+                puts(h+v_adjust, vofs+v+h_adjust, width, height, dir, font_info[f], inst._, color);
                 v += width;
             }
             break;
