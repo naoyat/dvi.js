@@ -7,6 +7,7 @@ var PX_PER_PT = 1.3325;
 var PT72_PER_PT = 72 / 72.27;
 var JFM_SHRINK = 0.962216;
 var JFM_HSHRINK = 0.9164428;
+var TFM_LOAD_ON_DEMAND = false;
 
 var dvi = undefined;
 
@@ -29,6 +30,11 @@ document.onkeydown = dvi_keyevent;
 var page_mode = 0;
 
 function show_page_0() {
+    if (!TFM_LOAD_ON_DEMAND) {
+        dvi.page(0);
+        return;
+    }
+
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
             $(dvi.target).children().remove();
@@ -668,7 +674,7 @@ function grouping(insts) {
             if (document.font_info[inst.k] == undefined) {
                 inst.scale = inst.s / inst.d;
                 document.font_info[inst.k] = inst;
-                tfm_load(inst.file);
+                if (TFM_LOAD_ON_DEMAND) tfm_load(inst.file);
             }
             break;
 

@@ -9,7 +9,6 @@ function tfm_load(font_file) {
 
     var url = "tfm/" + font_file + ".tfm";
     tfm_loading_count++;
-
     getBinary(url, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         var tfm = parse_tfm(arr, font_file);

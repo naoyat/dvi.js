@@ -1,5 +1,5 @@
 
-JS_SRC = js/jis2uc.js js/binary.js js/tfms.js js/tfm-loader.js js/dvi-parser.js
+JS_SRC = js/jis2uc.js js/binary.js js/tfms.js js/dvi-parser.js # js/tfm-loader.js
 all: dvi.min.js
 
 js/jis2uc.js: data/iso-2022-jp-2004-std.txt isotable.awk
