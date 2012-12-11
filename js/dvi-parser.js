@@ -100,9 +100,14 @@ function rule(h, v, width, height, dir, color) {
         top = bottom;
         var tmp = ht; ht = wd; wd = tmp;
     }
+/*
+    console.log("rule(x:%s, y:%s-%s, w:%s, h:%s, dir:%d, color:%s",
+                p_2g(left), p_2g(bottom), p_2g(top), p_2g(wd), p_2g(ht),
+                dir, color);
+*/
     $('<span />').css({
         position: "absolute",
-        border: "0.1px solid",
+        /* border: "0.1px solid", */
         'background-color': color,
         top: p_2f(top)+"pt",
         left: p_2f(left)+"pt",
@@ -460,8 +465,8 @@ function show_page(page, font_info) {
                         var r = Math.floor(255 * (1 - Math.min(1, c+k))),
                             g = Math.floor(255 * (1 - Math.min(1, m+k))),
                             b = Math.floor(255 * (1 - Math.min(1, y+k)));
-                        console.log(sprintf("cmyk %.2f %.2f %.2f %.2f -> rgb %.2f %.2f %.2f",
-                                            c,m,y,k, r,g,b));
+                        // console.log(sprintf("cmyk %.2f %.2f %.2f %.2f -> rgb %.2f %.2f %.2f",
+                        //                     c,m,y,k, r,g,b));
                         color = '#' + p_0x(2,r) + p_0x(2,g) + p_0x(2,b);
                     } else {
                         color = arg;
