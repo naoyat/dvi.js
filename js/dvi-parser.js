@@ -445,17 +445,28 @@ function show_page(page, font_info) {
             if (inst.x.match(/color (.*)/)) {
                 var cmd = RegExp.$1;
                 if (cmd.match(/push +(.*)/)) {
+                    colorst.push(color);
                     var arg = RegExp.$1;
                     if (arg.match(/rgb ([^ ]+) ([^ ]+) ([^ ]+)/)) {
                         var r = Math.floor(255 * RegExp.$1),
                             g = Math.floor(255 * RegExp.$2),
                             b = Math.floor(255 * RegExp.$3);
                         color = '#' + p_0x(2,r) + p_0x(2,g) + p_0x(2,b);
+                    } else if (arg.match(/cmyk ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+)/)) {
+                        var c = RegExp.$1,
+                            m = RegExp.$2,
+                            y = RegExp.$3,
+                            k = RegExp.$4;
+                        var r = Math.floor(255 * (1 - Math.min(1, c+k))),
+                            g = Math.floor(255 * (1 - Math.min(1, m+k))),
+                            b = Math.floor(255 * (1 - Math.min(1, y+k)));
+                        console.log(sprintf("cmyk %.2f %.2f %.2f %.2f -> rgb %.2f %.2f %.2f",
+                                            c,m,y,k, r,g,b));
+                        color = '#' + p_0x(2,r) + p_0x(2,g) + p_0x(2,b);
                     } else {
                         color = arg;
                     }
                     // console.log("color[] << " + color);
-                    colorst.push(color);
                 } else if (cmd.match(/pop/)) {
                     color = colorst.pop();
                     // console.log("color[] >> " + color);
