@@ -25,6 +25,9 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
     user_agent = AGENT_UNKNOWN;
 }
 
+var dragging = false, mouseX, mouseY;
+var DRAG_THRESHOLD = 30;
+
 function show_page_0() {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
@@ -34,16 +37,13 @@ function show_page_0() {
         ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
-        show_page(dvi.pages[0], dvi.font_info);
+        dvi.page(0);
+        // show_page(dvi, 0);
         page_mode = -1;
     }
 }
-function dvi_load(target, file) {
-    $(target).flickable({
-        flick: function(event) { alert("FLICKED"); },
-        scrollBack: function(event) { alert("SCROLL BACK"); }
-    });
 
+function dvi_load(target, file) {
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
@@ -53,23 +53,35 @@ function dvi_load(target, file) {
         dvi = rejoin_chars(grouping(insts));
         dvi.target = target;
         dvi.curr_page = 0;
+
+        dvi.next_page = function () {
+            if (this.curr_page < this.pages.length - 1) {
+                this.page(++this.curr_page);
+            }
+        };
+        dvi.prev_page = function () {
+            if (this.curr_page > 0) {
+                this.page(--this.curr_page);
+            }
+        };
+        dvi.page = function (page_no) {
+            show_page(this, page_no);
+        };
+
         show_page_0();
     });
 }
+
 
 function dvi_keyevent(evt) {
     switch (evt.keyCode) {
         case 32: // space
             break;
         case 37: case 38: case 72: case 75: case 80: // left up h k p
-            if (dvi != undefined && dvi.curr_page > 0) {
-                show_page(dvi.pages[--dvi.curr_page], dvi.font_info);
-            }
+            if (dvi != undefined) dvi.prev_page();
             break;
         case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
-            if (dvi != undefined && dvi.curr_page < dvi.pages.length-1) {
-                show_page(dvi.pages[++dvi.curr_page], dvi.font_info);
-            }
+            if (dvi != undefined) dvi.next_page();
             break;
         default: break;
     }
@@ -213,15 +225,41 @@ function strWidth(font_info, str) {
     return undefined;
 }
 
-function show_page(page, font_info) {
+function show_page(dvi, page_no) {
+    var page = dvi.pages[page_no];
+    var font_info = dvi.font_info;
+
     $(dvi.target).children().remove();
+
+    $('body')[0].onmousedown = function(event) {
+        mouseX = mouseY = undefined;
+        dragging = true;
+    };
+    $('body')[0].onmouseup = function(event) {
+        dragging = false;
+    };
+    document.onmousemove = function(event) {
+        if (!dragging) return;
+        var newX = event.x, newY = event.y;
+        if (mouseX != undefined && mouseY != undefined) {
+            var dx = newX - mouseX, dy = newY - mouseY;
+            console.log("dx = "+ dx + " " + dy);
+            if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+                dragging = false;
+                dvi.next_page();
+            } else if (dx < -DRAG_THRESHOLD || dy < -DRAG_THRESHOLD) {
+                dragging = false;
+                dvi.prev_page();
+            }
+        }
+        mouseX = newX; mouseY = newY;
+    };
 
     var page_no = page.count[0];
     var vofs = 0; //888 * 65536 * (page_no - 1);
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
     var color = "Black", colorst = [];
-    // var font_info = {};
     var dir = 0;
     var tfm = undefined;
 
