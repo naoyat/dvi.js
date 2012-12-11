@@ -10,9 +10,6 @@ var JFM_HSHRINK = 0.9164428;
 
 var dvi = undefined;
 
-document.onkeydown = dvi_keyevent;
-var page_mode = 0;
-
 var AGENT_UNKNOWN = 0;
 var AGENT_CHROME  = 1;
 var AGENT_FIREFOX = 2;
@@ -28,6 +25,9 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
     user_agent = AGENT_UNKNOWN;
 }
 
+document.onkeydown = dvi_keyevent;
+var page_mode = 0;
+/*
 function set_event_handler(dvi) {
     var dragging = false, mouseX, mouseY;
     var DRAG_THRESHOLD = 30, FLICK_THRESHOLD = 100;
@@ -65,7 +65,6 @@ function set_event_handler(dvi) {
         if (e.type == "touchstart") {
             startX = touch.pageX;
             startY = touch.pageX;
-            // $("#msg").text("");
         } else if (e.type == "touchmove") {
             diffX = touch.pageX - startX,
             diffY = touch.pageY - startY;
@@ -83,7 +82,7 @@ function set_event_handler(dvi) {
     body.addEventListener("touchmove", touchHandler, false);
     body.addEventListener("touchend", touchHandler, false);
 }
-
+*/
 function show_page_0() {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
@@ -93,10 +92,9 @@ function show_page_0() {
         ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
-        set_event_handler(dvi);
+        // set_event_handler(dvi);
 
         dvi.page(0);
-        // show_page(dvi, 0);
         page_mode = -1;
     }
 }
@@ -337,7 +335,7 @@ function show_page(dvi, page_no) {
                 // font_info[f].scale : TFMからの拡大率
 
                 var pt = scaled_size; // * PT72_PER_PT;
-                
+
                 //var xh = 9.1644287109375/10 * scaled_ptsize;
                 if (dir == 0) {
                     var h_ = 0;
@@ -362,7 +360,7 @@ function show_page(dvi, page_no) {
                         switch (user_agent) {
                         case AGENT_CHROME:
                         default:
-                            v_ = pt*(1/2 + 0.18);
+                            v_ = pt*(1/2 + 0.18 + 0.2);
                             break;
                         case AGENT_FIREFOX:
                             v_ = pt*(-1/2 + 0.18);
@@ -373,9 +371,13 @@ function show_page(dvi, page_no) {
                         }
                     } else {
                         switch (user_agent) {
+                        case AGENT_CHROME:
+                            v_ = pt*(0.125 + 0.1) + tfm.max_height * font_info[f].scale;
+                            break;
                         case AGENT_SAFARI:
                             v_ = pt*(0.125 + 0.08) + tfm.max_height * font_info[f].scale;
                             break;
+                        case AGENT_FIREFOX:
                         default:
                             v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
                             break;
