@@ -13,6 +13,10 @@ JavaScriptでdviプレビューアを書いてみるというネタ
 
 と思ってdviをブラウザ上でJavaScriptで展開してjQueryで動的に画面を組み立ててみるテストがこれ
 
+## デモ
+
+http://naoyat.github.com/dvi.js/
+
 ## 道のり
 
 * dviファイル（バイナリ！）の読み込み
@@ -23,6 +27,25 @@ JavaScriptでdviプレビューアを書いてみるというネタ
 * なので、文字列としてくっつけられる所はできるだけくっつける的モードもある（が、文字の位置はずれる。ちょっと高度な計算をして何とかならないか）
 * [NEW!] TFM/JFMの情報を使ってきっちり揃える！
 * [NEW!] Webフォント（というかその元になってるbakomaフォント）では0x00-0x20のグリフが0xA0以降に移動しているのでそれに対応したらπもff/ffl/ffiも数式記号もちゃんと出るようになった！
+
+## 使い方
+
+このhtmlファイルと同じ階層にある sample.dvi を読み込んで表示する例
+
+```
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <title>dvi.js demo</title>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+  <script type="text/javascript" src="dvi.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="texfonts.min.css"></style>
+</head>
+<body onload="dvi_load('#out','sample.dvi');">
+<div id="out"></div>
+</body>
+</html>
+```
 
 ## 現状
 
