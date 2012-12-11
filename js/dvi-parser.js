@@ -9,10 +9,8 @@ var JFM_SHRINK = 0.962216;
 var JFM_HSHRINK = 0.9164428;
 
 var dvi = undefined;
-var dvi_curr_page = 0;
 
 document.onkeydown = dvi_keyevent;
-//$(window).flickable();
 var page_mode = 0;
 
 var AGENT_UNKNOWN = 0;
@@ -30,8 +28,8 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
 function show_page_0() {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
-            $('#out').children().remove();
-            $('<span />', { text: "now rendering..." }).css({ "text-decoration": "blink" }).appendTo('#out');
+            $(dvi.target).children().remove();
+            $('<span />', { text: "now rendering..." }).css({ "text-decoration": "blink" }).appendTo(dvi.target);
         }
         ++page_mode;
         setTimeout(show_page_0, 0.1);
@@ -40,7 +38,12 @@ function show_page_0() {
         page_mode = -1;
     }
 }
-function dvi_load(file) {
+function dvi_load(target, file) {
+    $(target).flickable({
+        flick: function(event) { alert("FLICKED"); },
+        scrollBack: function(event) { alert("SCROLL BACK"); }
+    });
+
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
@@ -48,7 +51,8 @@ function dvi_load(file) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
         dvi = rejoin_chars(grouping(insts));
-        dvi_curr_page = 0;
+        dvi.target = target;
+        dvi.curr_page = 0;
         show_page_0();
     });
 }
@@ -58,13 +62,13 @@ function dvi_keyevent(evt) {
         case 32: // space
             break;
         case 37: case 38: case 72: case 75: case 80: // left up h k p
-            if (dvi != undefined && dvi_curr_page > 0) {
-                show_page(dvi.pages[--dvi_curr_page], dvi.font_info);
+            if (dvi != undefined && dvi.curr_page > 0) {
+                show_page(dvi.pages[--dvi.curr_page], dvi.font_info);
             }
             break;
         case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
-            if (dvi != undefined && dvi_curr_page < dvi.pages.length-1) {
-                show_page(dvi.pages[++dvi_curr_page], dvi.font_info);
+            if (dvi != undefined && dvi.curr_page < dvi.pages.length-1) {
+                show_page(dvi.pages[++dvi.curr_page], dvi.font_info);
             }
             break;
         default: break;
@@ -95,7 +99,7 @@ function rule(h, v, width, height, dir, color) {
         height: p_2f(ht)+"pt",
         'min-width': "1px",
         'min-height': "1px"
-    }).appendTo('#out');
+    }).appendTo(dvi.target);
 }
 
 function puts(h, v, width, height, dir, font_info, str, color) {
@@ -180,7 +184,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
 
     $('<span />', {
         text: str
-    }).css(css).appendTo('#out');
+    }).css(css).appendTo(dvi.target);
 }
 
 function strWidth(font_info, str) {
@@ -210,7 +214,7 @@ function strWidth(font_info, str) {
 }
 
 function show_page(page, font_info) {
-    $('#out').children().remove();
+    $(dvi.target).children().remove();
 
     var page_no = page.count[0];
     var vofs = 0; //888 * 65536 * (page_no - 1);
