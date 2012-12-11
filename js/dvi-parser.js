@@ -16,17 +16,73 @@ var page_mode = 0;
 var AGENT_UNKNOWN = 0;
 var AGENT_CHROME  = 1;
 var AGENT_FIREFOX = 2;
+var AGENT_SAFARI  = 3;
 var user_agent;
 if (navigator.userAgent.search(/Chrome/) != -1) {
     user_agent = AGENT_CHROME;
 } else if (navigator.userAgent.search(/Firefox/) != -1) {
     user_agent = AGENT_FIREFOX;
+} else if (navigator.userAgent.search(/Safari/) != -1) {
+    user_agent = AGENT_SAFARI;
 } else { // default
     user_agent = AGENT_UNKNOWN;
 }
 
-var dragging = false, mouseX, mouseY;
-var DRAG_THRESHOLD = 30;
+function set_event_handler(dvi) {
+    var dragging = false, mouseX, mouseY;
+    var DRAG_THRESHOLD = 30, FLICK_THRESHOLD = 100;
+
+    var body = $('body')[0];
+    body.onmousedown = function(event) {
+        mouseX = mouseY = undefined;
+        dragging = true;
+    };
+    body.onmouseup = function(event) {
+        dragging = false;
+    };
+
+    document.onmousemove = function(event) {
+        if (!dragging) return;
+        var newX = event.x, newY = event.y;
+        if (mouseX != undefined && mouseY != undefined) {
+            var dx = newX - mouseX, dy = newY - mouseY;
+            console.log("dx = "+ dx + " " + dy);
+            if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+                dragging = false;
+                dvi.next_page();
+            } else if (dx < -DRAG_THRESHOLD || dy < -DRAG_THRESHOLD) {
+                dragging = false;
+                dvi.prev_page();
+            }
+        }
+        mouseX = newX; mouseY = newY;
+    };
+
+    var startX, startY, diffX, diffY;
+    function touchHandler(e) {
+        e.preventDefault();
+        var touch = e.touches[0];
+        if (e.type == "touchstart") {
+            startX = touch.pageX;
+            startY = touch.pageX;
+            // $("#msg").text("");
+        } else if (e.type == "touchmove") {
+            diffX = touch.pageX - startX,
+            diffY = touch.pageY - startY;
+        } else if (e.type == "touchend") {
+            if (diffX > FLICK_THRESHOLD) {
+                dvi.next_page();
+                // $("#msg").text("右方向へフリック！(" + diffX + ")");
+            } else if (diffX < -FLICK_THRESHOLD) {
+                dvi.prev_page();
+                // $("#msg").text("左方向へフリック！(" + diffX + ")");
+            }
+        }
+    }
+    body.addEventListener("touchstart", touchHandler, false);
+    body.addEventListener("touchmove", touchHandler, false);
+    body.addEventListener("touchend", touchHandler, false);
+}
 
 function show_page_0() {
     if (tfm_loading_count > 0) {
@@ -37,6 +93,8 @@ function show_page_0() {
         ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
+        set_event_handler(dvi);
+
         dvi.page(0);
         // show_page(dvi, 0);
         page_mode = -1;
@@ -231,30 +289,6 @@ function show_page(dvi, page_no) {
 
     $(dvi.target).children().remove();
 
-    $('body')[0].onmousedown = function(event) {
-        mouseX = mouseY = undefined;
-        dragging = true;
-    };
-    $('body')[0].onmouseup = function(event) {
-        dragging = false;
-    };
-    document.onmousemove = function(event) {
-        if (!dragging) return;
-        var newX = event.x, newY = event.y;
-        if (mouseX != undefined && mouseY != undefined) {
-            var dx = newX - mouseX, dy = newY - mouseY;
-            console.log("dx = "+ dx + " " + dy);
-            if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
-                dragging = false;
-                dvi.next_page();
-            } else if (dx < -DRAG_THRESHOLD || dy < -DRAG_THRESHOLD) {
-                dragging = false;
-                dvi.prev_page();
-            }
-        }
-        mouseX = newX; mouseY = newY;
-    };
-
     var page_no = page.count[0];
     var vofs = 0; //888 * 65536 * (page_no - 1);
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
@@ -303,13 +337,20 @@ function show_page(dvi, page_no) {
                 // font_info[f].scale : TFMからの拡大率
 
                 var pt = scaled_size; // * PT72_PER_PT;
-
+                
                 //var xh = 9.1644287109375/10 * scaled_ptsize;
                 if (dir == 0) {
                     var h_ = 0;
                     if (tfm.type == 'jfm') {
                         // 日本語のフォントは上に1/6余白がある
-                        h_ = tfm.max_height * font_info[f].scale + pt*0.18;
+                        switch (user_agent) {
+                        case AGENT_SAFARI:
+                            h_ = tfm.max_height * font_info[f].scale + pt*0.3;
+                            break;
+                        default:
+                            h_ = tfm.max_height * font_info[f].scale + pt*0.18;
+                            break;
+                        }
                     } else {
                         // h_ = pt * 0.73; //68;
                         h_ = tfm.max_height * font_info[f].scale;
@@ -326,9 +367,19 @@ function show_page(dvi, page_no) {
                         case AGENT_FIREFOX:
                             v_ = pt*(-1/2 + 0.18);
                             break;
+                        case AGENT_SAFARI:
+                            v_ = pt*(1/2 + 0.18 + 0.3);
+                            break;
                         }
                     } else {
-                        v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
+                        switch (user_agent) {
+                        case AGENT_SAFARI:
+                            v_ = pt*(0.125 + 0.08) + tfm.max_height * font_info[f].scale;
+                            break;
+                        default:
+                            v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
+                            break;
+                        }
                     }
                     v_adjust = v_ * 65536;
                 }
