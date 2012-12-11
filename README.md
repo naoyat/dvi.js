@@ -1,7 +1,5 @@
 # dvi.js
 
-## これは何
-
 JavaScriptでdviプレビューアを書いてみるというネタ
 (see http://naoyat.hatenablog.jp/entry/2012/12/10/000000)
 
