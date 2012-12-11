@@ -82,7 +82,6 @@ function rule(h, v, width, height, dir, color) {
         wd = width / 65536 * PT72_PER_PT,
         ht = height / 65536 * PT72_PER_PT;
 
-    // console.log(sprintf("rule %.1f %.1f %.1f %.1f %d", left, bottom, wd,ht, dir));
     if (dir == 0) {
         top = bottom - ht;
     } else {
@@ -93,10 +92,10 @@ function rule(h, v, width, height, dir, color) {
         position: "absolute",
         border: "0.1px solid",
         'background-color': color,
-        top: sprintf("%.2fpt", top),
-        left: sprintf("%.2fpt", left),
-        width: sprintf("%.2fpt", wd),
-        height: sprintf("%.2fpt", ht),
+        top: p_2f(top)+"pt",
+        left: p_2f(left)+"pt",
+        width: p_2f(wd)+"pt",
+        height: p_2f(ht)+"pt",
         'min-width': "1px",
         'min-height': "1px"
     }).appendTo('#out');
@@ -121,10 +120,6 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         family = "'" + family + "'";
     }
     // var pt = font_info.d / 65536;
-/*
-    if (font_info.d != font_info.s)
-        console.log(sprintf("%s: d=%.2f, s=%.2f", font_info.file, font_info.d/65536, font_info.s/65536));
-*/
     var css = {
         position: "absolute",
         color: color,
@@ -133,7 +128,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         'line-break': "none",
 //        'letter-spacing': "-1px",
         'text-autospace': "none",
-        font: sprintf("%.1fpt %s", pt, family),
+        font: p_2f(pt)+"pt "+ family,
         'white-space': "nowrap"
         // 'display': 'inline-block',
         // 'line-height': "normal",
@@ -158,10 +153,10 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         }
         y -= ht;
         
-        css.top = sprintf("%.2fpt", y);
-        css.left = sprintf("%.2fpt", x);
-        css.width = "3px"; //sprintf("%.2fpt", w);
-        css.height = "0px"; //sprintf("%.2fpt", pt);
+        css.top = p_2f(y)+"pt";
+        css.left = p_2f(x)+"pt";
+        css.width = "3px"; // p_2f(w)+"pt";
+        css.height = "0px"; // p_2f(pt)+"pt";
     } else {
         if (family_ == 'tmin' || family_ == 'tgoth') {
             x -= pt * 0.2;
@@ -172,10 +167,10 @@ function puts(h, v, width, height, dir, font_info, str, color) {
             //x -= pt * 0.;
         }
         
-        css.top = sprintf("%.2fpt", y);
-        css.left = sprintf("%.2fpt", x);
-        css.width = sprintf("%.2fpt", pt);
-        css.height = sprintf("%.2fpt", w*2);
+        css.top = p_2f(y)+"pt";
+        css.left = p_2f(x)+"pt";
+        css.width = p_2f(pt)+"pt";
+        css.height = p_2f(w*2)+"pt";
         // IE
         css['writing-mode'] = 'vertical-rl';
         // Firefox
@@ -206,7 +201,7 @@ function strWidth(font_info, str) {
     } else {
         family = "'" + family + "'";
     }
-    var font_desc = sprintf("%.1fpt %s", pt*10, family);
+    var font_desc = p_2f(pt*10) +" "+ family;
     // console.log("font_desc = "+ font_desc);
     var canvas = document.getElementById('metrics');
     if (canvas.getContext) {
@@ -216,7 +211,6 @@ function strWidth(font_info, str) {
         // context['-webkit-writing-mode'] = 'vertical-rl';
         var metrics = context.measureText(str);
         var width = metrics.width / PX_PER_PT / PT72_PER_PT / 10;
-        // console.log(sprintf("strWidth(%s) = %.2f", str, width));
         return width;
     }
     return undefined;
@@ -246,11 +240,13 @@ function show_page(page, font_info) {
         switch (inst.op) {
         case 'set': // orig
             var width = 0, height = 0;
+            var info_ = undefined;
             if (tfm == undefined) {
                 width = strWidth(font_info[f], inst._) * 65536;
                 height = font_info[f].s;
             } else {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
+                info_ = info;
                 // console.log("info.width of "+ inst._ +" = "+ info.w);
                 width += info.w * font_info[f].scale * 65536;
                 var h_adjust = 0, v_adjust = 0;
@@ -266,16 +262,6 @@ function show_page(page, font_info) {
                     } else if ((0x2146 <= inst.c && inst.c <= 0x215B) & !(inst.c & 1)) { // open-paren
                         h_adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
                     }
-/*
-                    if (adjust != 0) {
-                        console.log(sprintf("width of %s: %.2f/%.2f * %.2f = %.2f; adjust = %.2f",
-                                            inst._,
-                                            info.w, tfm[0].w,
-                                            font_info[f].scale,
-                                            info.w * font_info[f].scale,
-                                            adjust));
-                    }
-*/
                 }
 
                 var scaled_size = font_info[f].s / 65536; // ポイント数
@@ -289,27 +275,37 @@ function show_page(page, font_info) {
                 if (dir == 0) {
                     var h_ = 0;
                     if (tfm.type == 'jfm') {
-                        // h_ = 7.77587890625/9.1644287109375 * scaled_size; // .848484
-                        // 日本語のフォントが上に1/6余白を採ってあるので、
-                        // height = 0.8484 なら (0.8484 + 1/6) だけ上げる必要がある
-                        h_ = pt * 0.96; // (0.8484848484 + 0.1666) * pt;
+                        // 日本語のフォントは上に1/6余白がある
+                        h_ = tfm.max_height * font_info[f].scale + pt*0.18;
                     } else {
-                        h_ = pt * 0.68;
+                        // h_ = pt * 0.73; //68;
+                        h_ = tfm.max_height * font_info[f].scale;
                     }
                     height = h_ * 65536;
                 } else {
                     var h_ = 0;
                     if (tfm.type == 'jfm') {
-                        // h_ = pt * 0; // (0.8484848484 + 0.1666) * pt;
-                        v_adjust = -0.07*pt * 65536;
+                        v_adjust = 0;
                     } else {
-                        h_ = pt * 0.68;
-                        v_adjust = 0.1*pt * 65536;
+                        v_adjust = 0;
                     }
-                    //height = h_ * 65536;
                 }
             }
             if (dir == 0) {
+/*
+                console.log(sprintf("[%s %s %s] %s: (%s %s %s %s) | h=%s+%s v=%s+%s wd=%s(/%s)*%s=%s ht=%s | design_size=%s ex=%s em=%s | (w:%s h:%s d:%s i:%s)",
+                                    font_info[f].file,
+                                    p_2g(font_info[f].s / 65536), p_2g(font_info[f].d / 65536),
+                                    inst._,
+                                    p_2g(info_.w), p_2g(info_.h), p_2g(info_.d), p_2g(info_.i),
+                                    p_2g(h/65536), p_2g(h_adjust/65536),
+                                    p_2g(v/65536), p_2g(v_adjust/65536),
+                                    p_2g(info.w), p_2g(tfm[0].w), p_2g(font_info[f].scale), p_2g(info.w*font_info[f].scale),
+                                    p_2g(height/65536),
+                                    p_2g(tfm.design_size/1048576), p_2g(tfm.x_height), p_2g(tfm.quad),
+                                    p_2g(tfm.max_width), p_2g(tfm.max_height), p_2g(tfm.max_depth), p_2g(tfm.max_italic)
+                                   ));
+*/
                 puts(h+h_adjust, vofs+v+v_adjust, width, height, dir, font_info[f], inst._, color);
                 h += width;
             } else {
@@ -335,7 +331,7 @@ function show_page(page, font_info) {
                 width -= info.w * 65536 * inst.sp;
             }
             width += inst.w;
-
+            
             puts(h, vofs+v, width, height, dir, font_info[f], str, color);
             if (dir == 0) {
                 h += width;
@@ -353,7 +349,6 @@ function show_page(page, font_info) {
             }
             // var height = inst.a / 65536;
             // var width = inst.b / 65536;
-            // dumped += sprintf("{■:%.1f x %.1f}", width, height);
             break;
         case 'put_rule':
             rule(h, vofs+v, inst.b, inst.a, dir, color);
@@ -437,7 +432,7 @@ function show_page(page, font_info) {
                         var r = Math.floor(255 * RegExp.$1),
                             g = Math.floor(255 * RegExp.$2),
                             b = Math.floor(255 * RegExp.$3);
-                        color = '#' + p0x(2,r) + p0x(2,g) + p0x(2,b);
+                        color = '#' + p_0x(2,r) + p_0x(2,g) + p_0x(2,b);
                     } else {
                         color = arg;
                     }
@@ -825,7 +820,9 @@ function parse_dvi(arr) {
                 var l_ = arr[ptr++];
                 var dir = reads(arr, ptr, a_); ptr += a_; // string
                 var file = reads(arr, ptr, l_); ptr += l_; // string
-                code.push({op:'fnt_def', k:k, c:c, s:s, d:d, dir:dir, file:file}); 
+                code.push({op:'fnt_def', k:k, c:c, s:s, d:d, dir:dir, file:file});
+                // console.log(sprintf("FNT_DEF<k=%d> s=%.2f d=%.2f (%s)",
+                //                     k, s/65536, d/65536, dir + file));
                 break;
             case 247: // pre
                 var i = arr[ptr++]; // unsigned

@@ -82,24 +82,36 @@ function parse_tfm(arr, font_file) {
         ofs += 4;
     }
     // width
+    var max_width = 0;
     for (var j = 0; j < nw; j++) {
-        tfm.width.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        tfm.width.push(val);
+        if (val > max_width) max_width = val;
     }
     // height
+    var max_height = 0;
     for (var j = 0; j < nh; j++) {
-        tfm.height.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        tfm.height.push(val);
+        if (val > max_height) max_height = val;
     }
     // depth
+    var max_depth = 0;
     for (var j = 0; j < nd; j++) {
-        tfm.depth.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        tfm.depth.push(val);
+        if (val > max_depth) max_depth = val;
     }
     // italic
+    var max_italic = 0;
     for (var j = 0; j < ni; j++) {
-        tfm.italic.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        tfm.italic.push(val);
+        if (val > max_italic) max_italic = val;
     }
     // lig_kern
     for (var j = 0; j < nl; j++) {
@@ -157,12 +169,17 @@ function parse_tfm(arr, font_file) {
         tfm2[c] = info;
     }
 
-    tfm2.type = 'tfm';
-    tfm2.font_file = font_file;
+    tfm2.type        = 'tfm';
+    tfm2.font_file   = font_file;
     tfm2.design_size = tfm.design_size;
 
-    tfm2.x_height = tfm.param[4] * ds / 1048576;
-    tfm2.quad = tfm.param[5] * ds / 1048576;
+    tfm2.x_height    = tfm.param[4] * ds / 1048576;
+    tfm2.quad        = tfm.param[5] * ds / 1048576;
+
+    tfm2.max_width   = max_width * ds / 1048576;
+    tfm2.max_height  = max_height * ds / 1048576;
+    tfm2.max_depth   = max_depth * ds / 1048576;
+    tfm2.max_italic  = max_italic * ds / 1048576;
 
     return tfm2;
 }
@@ -217,7 +234,7 @@ function parse_jfm(arr, font_file) {
     // header
     var ofs = 28;
     for (var j = 0; j < lh; j++) {
-        jfm.header.push( readu(arr, ofs, 4) );
+        jfm.header.push(readu(arr, ofs, 4));
         ofs += 4;
     }
 
@@ -241,24 +258,36 @@ function parse_jfm(arr, font_file) {
         ofs += 4;
     }
     // width
+    var max_width = 0;
     for (var j = 0; j < nw; j++) {
-        jfm.width.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        jfm.width.push(val);
+        if (val > max_width) max_width = val;
     }
     // height
+    var max_height = 0;
     for (var j = 0; j < nh; j++) {
-        jfm.height.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        jfm.height.push(val);
+        if (val > max_height) max_height = val;
     }
     // depth
+    var max_depth = 0;
     for (var j = 0; j < nd; j++) {
-        jfm.depth.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        jfm.depth.push(val);
+        if (val > max_depth) max_depth = val;
     }
     // italic
+    var max_italic = 0;
     for (var j = 0; j < ni; j++) {
-        jfm.italic.push(readu(arr, ofs, 4));
+        var val = readi(arr, ofs, 4);
         ofs += 4;
+        jfm.italic.push(val);
+        if (val > max_italic) max_italic = val;
     }
     // lig_kern
     for (var j = 0; j < nl; j++) {
@@ -315,12 +344,17 @@ function parse_jfm(arr, font_file) {
         jfm2[code] = info;
     }
 
-    jfm2.type = 'jfm';
-    jfm2.font_file = font_file;
+    jfm2.type        = 'jfm';
+    jfm2.font_file   = font_file;
     jfm2.design_size = jfm.design_size;
 
-    jfm2.x_height = jfm.param[4] * ds / 1048576;
-    jfm2.quad = jfm.param[5] * ds / 1048576;
+    jfm2.x_height    = jfm.param[4] * ds / 1048576;
+    jfm2.quad        = jfm.param[5] * ds / 1048576;
+
+    jfm2.max_width   = max_width * ds / 1048576;
+    jfm2.max_height  = max_height * ds / 1048576;
+    jfm2.max_depth   = max_depth * ds/ 1048576;
+    jfm2.max_italic  = max_italic * ds / 1048576;
 
     jfm2.x_height *= (7.77587890625 / 9.1644287109375);
     // console.log("JFM2 "+ JSON.stringify(jfm2));
