@@ -1,7 +1,6 @@
 # dvi.js
 
 A dvi previewer in JavaScript (with jQuery)
-
 (see http://naoyat.hatenablog.jp/entry/2012/12/10/000000)
 
 ## demo
@@ -30,17 +29,11 @@ An example displaying `sample.dvi` in the same directory as this html:
 ## Author
 
 @naoya_t
-
-* http://github.com/naoyat
-* http://twitter.com/naoya_t
-* http://naoyat.hatenablog.jp/
+http://github.com/naoyat | http://twitter.com/naoya_t | http://naoyat.hatenablog.jp/
 
 ## License
 
-(c)2012 @naoya_t
-
-MIT License
-
+(c)2012 @naoya_t, with MIT License
 
 
 
