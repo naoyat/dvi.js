@@ -5,7 +5,7 @@
         "output_min_file": "texfonts.min.css"
      }],
     "javascript": [{
-        "input_files": ["js/jis2uc.js", "js/binary.js", "js/tfm-r5rs.js", "js/tfm-loader.js", "js/dvi-parser.js"],
+        "input_files": ["js/jis2uc.js", "js/binary.js", "js/tfms.js", "js/tfm-loader.js", "js/dvi-parser.js"],
         "output_file": "dvi.min.js"
     }]
 }

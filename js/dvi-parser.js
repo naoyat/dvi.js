@@ -27,62 +27,7 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
 
 document.onkeydown = dvi_keyevent;
 var page_mode = 0;
-/*
-function set_event_handler(dvi) {
-    var dragging = false, mouseX, mouseY;
-    var DRAG_THRESHOLD = 30, FLICK_THRESHOLD = 100;
 
-    var body = $('body')[0];
-    body.onmousedown = function(event) {
-        mouseX = mouseY = undefined;
-        dragging = true;
-    };
-    body.onmouseup = function(event) {
-        dragging = false;
-    };
-
-    document.onmousemove = function(event) {
-        if (!dragging) return;
-        var newX = event.x, newY = event.y;
-        if (mouseX != undefined && mouseY != undefined) {
-            var dx = newX - mouseX, dy = newY - mouseY;
-            console.log("dx = "+ dx + " " + dy);
-            if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
-                dragging = false;
-                dvi.next_page();
-            } else if (dx < -DRAG_THRESHOLD || dy < -DRAG_THRESHOLD) {
-                dragging = false;
-                dvi.prev_page();
-            }
-        }
-        mouseX = newX; mouseY = newY;
-    };
-
-    var startX, startY, diffX, diffY;
-    function touchHandler(e) {
-        e.preventDefault();
-        var touch = e.touches[0];
-        if (e.type == "touchstart") {
-            startX = touch.pageX;
-            startY = touch.pageX;
-        } else if (e.type == "touchmove") {
-            diffX = touch.pageX - startX,
-            diffY = touch.pageY - startY;
-        } else if (e.type == "touchend") {
-            if (diffX > FLICK_THRESHOLD) {
-                dvi.next_page();
-                // $("#msg").text("右方向へフリック！(" + diffX + ")");
-            } else if (diffX < -FLICK_THRESHOLD) {
-                dvi.prev_page();
-                // $("#msg").text("左方向へフリック！(" + diffX + ")");
-            }
-        }
-    }
-    body.addEventListener("touchstart", touchHandler, false);
-    body.addEventListener("touchmove", touchHandler, false);
-    body.addEventListener("touchend", touchHandler, false);
-}
-*/
 function show_page_0() {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
@@ -92,8 +37,6 @@ function show_page_0() {
         ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
-        // set_event_handler(dvi);
-
         // $(dvi.target)[0].innerHTML = "<pre>" + dump_tfms() + "</pre>";
         dvi.page(0);
         page_mode = -1;
@@ -214,12 +157,6 @@ function puts(h, v, width, height, dir, font_info, str, color) {
     if (dir == 0) {
         if (family_ == 'min' || family_ == 'goth'
             || family_ == 'jis' || family_ == 'jisg') {
-            // height 0.916443, width 0.962216
-//            y -= pt * 0.9; // * 0.8; //0.916443;
-            // css['-webkit-transform'] = "scale(0.962216, 0.916443)";
-            // css['-moz-transform'] = "scale(0.962216, 0.916443)";
-        } else { 
-//            y -= pt * 0.63; // * 0.5; // 666;
         }
         y -= ht;
 
@@ -256,32 +193,6 @@ function puts(h, v, width, height, dir, font_info, str, color) {
     }).css(css).appendTo(dvi.target);
 }
 
-function strWidth(font_info, str) {
-    var family = font_info.file;
-    var pt = font_info.s / 65536 * PT72_PER_PT;
-    if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
-        pt *= JFM_SHRINK;
-        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
-    } else if (family.match(/goth/) || family.match(/jisg/)) {
-        pt *= JFM_SHRINK;
-        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
-    } else {
-        family = "'" + family + "'";
-    }
-    var font_desc = p_2f(pt*10) +" "+ family;
-    var canvas = document.getElementById('metrics');
-    if (canvas.getContext) {
-        var context = canvas.getContext('2d');
-        context.font = font_desc;
-        // context['writing-mode'] = 'vertical-rl';
-        // context['-webkit-writing-mode'] = 'vertical-rl';
-        var metrics = context.measureText(str);
-        var width = metrics.width / PX_PER_PT / PT72_PER_PT / 10;
-        return width;
-    }
-    return undefined;
-}
-
 function show_page(dvi, page_no) {
     var page = dvi.pages[page_no];
     var font_info = dvi.font_info;
@@ -309,8 +220,7 @@ function show_page(dvi, page_no) {
             var width = 0, height = 0;
             var info_ = undefined;
             if (tfm == undefined) {
-                width = strWidth(font_info[f], inst._) * 65536;
-                height = font_info[f].s;
+                console.log("tfm = undefined");
             } else {
                 var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
                 info_ = info;
@@ -413,9 +323,7 @@ function show_page(dvi, page_no) {
             var str = inst.s;
             var width = 0, height = 0;
             if (tfm == undefined) {
-                width = strWidth(font_info[f], str) * 65536;
-                width -= strWidth(font_info[f], " ") * 65536 * inst.sp;
-                height = font_info[f].s;
+                console.log("tfm = undefined");
             } else {
                 for (var i in inst.c) {
                     var c = inst.c[i];
