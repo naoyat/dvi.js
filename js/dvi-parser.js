@@ -12,7 +12,7 @@ var dvi = undefined;
 var dvi_curr_page = 0;
 
 document.onkeydown = dvi_keyevent;
-$(window).flickable();
+//$(window).flickable();
 var page_mode = 0;
 
 var AGENT_UNKNOWN = 0;
@@ -304,15 +304,7 @@ function show_page(page, font_info) {
                             break;
                         }
                     } else {
-                        switch (user_agent) {
-                        case AGENT_CHROME:
-                        default:
-                            v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
-                            break;
-                        case AGENT_FIREFOX:
-                            v_ = pt*0.333 + tfm.max_height * font_info[f].scale;
-                            break;
-                        }
+                        v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
                     }
                     v_adjust = v_ * 65536;
                 }
