@@ -677,7 +677,7 @@ function grouping(insts) {
                 if (TFM_LOAD_ON_DEMAND) tfm_load(inst.file);
                 else {
                     if (tfms[inst.file] == undefined) {
-                        alert("NOT LOADED: " + inst.file);
+                        console.log("NOT LOADED: " + inst.file);
                     }
                 }
             }
