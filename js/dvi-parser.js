@@ -15,6 +15,18 @@ document.onkeydown = dvi_keyevent;
 $(window).flickable();
 var page_mode = 0;
 
+var AGENT_UNKNOWN = 0;
+var AGENT_CHROME  = 1;
+var AGENT_FIREFOX = 2;
+var user_agent;
+if (navigator.userAgent.search(/Chrome/) != -1) {
+    user_agent = AGENT_CHROME;
+} else if (navigator.userAgent.search(/Firefox/) != -1) {
+    user_agent = AGENT_FIREFOX;
+} else { // default
+    user_agent = AGENT_UNKNOWN;
+}
+
 /*
 function render_dvi(arr) {
     var insts = parse_dvi(arr);
@@ -152,7 +164,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
 //            y -= pt * 0.63; // * 0.5; // 666;
         }
         y -= ht;
-        
+
         css.top = p_2f(y)+"pt";
         css.left = p_2f(x)+"pt";
         css.width = "3px"; // p_2f(w)+"pt";
@@ -160,17 +172,15 @@ function puts(h, v, width, height, dir, font_info, str, color) {
     } else {
         if (family_ == 'tmin' || family_ == 'tgoth') {
             x -= pt * 0.2;
-            // y -= pt * 0.5;
-            //x -= pt * 0.5;
         } else {
             x -= pt * 0.3;
-            //x -= pt * 0.;
+            css['-moz-transform'] =  "rotate(90deg)";
         }
-        
+
         css.top = p_2f(y)+"pt";
         css.left = p_2f(x)+"pt";
-        css.width = p_2f(pt)+"pt";
-        css.height = p_2f(w*2)+"pt";
+        css.width = "0px"; // p_2f(pt)+"pt";
+        css.height = "3px"; // p_2f(w*2)+"pt";
         // IE
         css['writing-mode'] = 'vertical-rl';
         // Firefox
@@ -183,7 +193,6 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         css['-o-writing-mode'] = 'vertical-rl';
     }
 
-//    $('<div />', {
     $('<span />', {
         text: str
     }).css(css).appendTo('#out');
@@ -283,12 +292,29 @@ function show_page(page, font_info) {
                     }
                     height = h_ * 65536;
                 } else {
-                    var h_ = 0;
+                    var v_ = 0;
                     if (tfm.type == 'jfm') {
-                        v_adjust = 0;
+                        switch (user_agent) {
+                        case AGENT_CHROME:
+                        default:
+                            v_ = pt*(1/2 + 0.18);
+                            break;
+                        case AGENT_FIREFOX:
+                            v_ = pt*(-1/2 + 0.18);
+                            break;
+                        }
                     } else {
-                        v_adjust = 0;
+                        switch (user_agent) {
+                        case AGENT_CHROME:
+                        default:
+                            v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
+                            break;
+                        case AGENT_FIREFOX:
+                            v_ = pt*0.333 + tfm.max_height * font_info[f].scale;
+                            break;
+                        }
                     }
+                    v_adjust = v_ * 65536;
                 }
             }
             if (dir == 0) {
