@@ -93,7 +93,10 @@ function show_page_0() {
         ++page_mode;
         setTimeout(show_page_0, 0.1);
     } else {
-        set_event_handler(dvi);
+        // set_event_handler(dvi);
+        $('body').flickable({
+            flick: function() {alert("flicked");} 
+        });
 
         dvi.page(0);
         // show_page(dvi, 0);
