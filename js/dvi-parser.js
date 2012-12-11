@@ -675,6 +675,11 @@ function grouping(insts) {
                 inst.scale = inst.s / inst.d;
                 document.font_info[inst.k] = inst;
                 if (TFM_LOAD_ON_DEMAND) tfm_load(inst.file);
+                else {
+                    if (tfms[inst.file] == undefined) {
+                        alert("NOT LOADED: " + inst.file);
+                    }
+                }
             }
             break;
 
