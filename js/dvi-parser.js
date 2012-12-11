@@ -94,6 +94,7 @@ function show_page_0() {
     } else {
         // set_event_handler(dvi);
 
+        // $(dvi.target)[0].innerHTML = "<pre>" + dump_tfms() + "</pre>";
         dvi.page(0);
         page_mode = -1;
     }

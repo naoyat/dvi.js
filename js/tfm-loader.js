@@ -1,8 +1,12 @@
 
-var tfms = {};
+if (window.tfms === undefined) {
+    window.tfms = {};
+}
 var tfm_loading_count = 0;
 
 function tfm_load(font_file) {
+    if (window.tfms[font_file] != undefined) return;
+
     var url = "tfm/" + font_file + ".tfm";
     tfm_loading_count++;
 
@@ -11,12 +15,29 @@ function tfm_load(font_file) {
         var tfm = parse_tfm(arr, font_file);
         if (tfm != undefined) {
             tfm.font_file = font_file;
-            tfms[font_file] = tfm;
+            window.tfms[font_file] = tfm;
         } else {
             console.log(font_file + ": not found");
         }
         tfm_loading_count--;
     });
+}
+
+function dump_tfms() {
+    var files = [];
+    for (var file in window.tfms) {
+        files.push(file);
+    }
+    files.sort();
+
+    var dumped = "var tfms = {\n";
+    for (var i = 0; i < files.length; ++i) {
+        var file = files[i];
+        console.log("tfms["+ file + "] = ...");
+
+        dumped += "\t'"+ file +"': "+ JSON.stringify(window.tfms[file]) + ",\n";
+    }
+    return dumped + '};\n';
 }
 
 function parse_tfm(arr, font_file) {
