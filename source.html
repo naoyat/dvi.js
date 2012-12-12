@@ -13,11 +13,12 @@
 </head>
 <body>
 
+<div id="navi"></div>
 <div id="out"></div>
 
 <script type="text/javascript">
 if (location.search.length > 1) {
-    dvi_load('#out', "samples/"+ location.search.substr(1));
+    dvi_load('#out', "samples/"+ location.search.substr(1), '#navi');
 }
 </script>
 

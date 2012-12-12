@@ -49,7 +49,7 @@ function show_page_0() {
     }
 }
 
-function dvi_load(target, file) {
+function dvi_load(out, file, navi) {
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
@@ -57,7 +57,8 @@ function dvi_load(target, file) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
         dvi = rejoin_chars(grouping(insts));
-        dvi.target = target;
+        dvi.target = out;
+        dvi.navi = navi;
         dvi.curr_page = 0;
 
         dvi.next_page = function () {
@@ -71,9 +72,34 @@ function dvi_load(target, file) {
             }
         };
         dvi.page = function (page_no) {
-            show_page(this, page_no);
+            if (0 <= page_no && page_no < this.pages.length)
+                show_page(this, page_no);
+            else if (-this.pages.length+1 <= page_no && page_no < 0)
+                show_page(this, this.pages.length + page_no);
         };
 
+        if (navi != undefined) {
+            $(navi).attr('align','right');
+            $('<button>⇤</button>')
+                .css('font-size','120%')
+                .click(function(){dvi.page(0);})
+                .appendTo(navi);
+            $('<button>←</button>')
+                .css('font-size','120%')
+                .click(function(){dvi.prev_page();})
+                .appendTo(navi);
+            $('<span id="page_no">1</span>')
+                .css('font-size','120%')
+                .appendTo(navi);
+            $('<button>→</button>')
+                .css('font-size','120%')
+                .click(function(){dvi.next_page();})
+                .appendTo(navi);
+            $('<button>⇥</button>')
+                .css('font-size','120%')
+                .click(function(){dvi.page(-1);})
+                .appendTo(navi);
+        };
         show_page_0();
     });
 }
@@ -203,10 +229,11 @@ function show_page(dvi, page_no) {
     var page = dvi.pages[page_no];
     var font_info = dvi.font_info;
 
+    if (dvi.navi != undefined) {
+        $('#page_no')[0].innerHTML = (1 + page_no);
+    }
     $(dvi.target).children().remove();
 
-    var page_no = page.count[0];
-    var vofs = 0; //888 * 65536 * (page_no - 1);
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
     var color = "Black", colorst = [];
@@ -318,10 +345,10 @@ function show_page(dvi, page_no) {
                                     p_2g(tfm.max_width), p_2g(tfm.max_height), p_2g(tfm.max_depth), p_2g(tfm.max_italic)
                                    ));
 */
-                puts(h+h_adjust, vofs+v+v_adjust, width, height, dir, font_info[f], inst._, color);
+                puts(h+h_adjust, v+v_adjust, width, height, dir, font_info[f], inst._, color);
                 h += width;
             } else {
-                puts(h+v_adjust, vofs+v+h_adjust, width, height, dir, font_info[f], inst._, color);
+                puts(h+v_adjust, v+h_adjust, width, height, dir, font_info[f], inst._, color);
                 v += width;
             }
             break;
@@ -342,7 +369,7 @@ function show_page(dvi, page_no) {
             }
             width += inst.w;
             
-            puts(h, vofs+v, width, height, dir, font_info[f], str, color);
+            puts(h, v, width, height, dir, font_info[f], str, color);
             if (dir == 0) {
                 h += width;
             } else {
@@ -350,7 +377,7 @@ function show_page(dvi, page_no) {
             }
             break;
         case 'set_rule':
-            rule(h, vofs+v, inst.b, inst.a, dir, color);
+            rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 h += inst.b;
             } else {
@@ -361,7 +388,7 @@ function show_page(dvi, page_no) {
             // var width = inst.b / 65536;
             break;
         case 'put_rule':
-            rule(h, vofs+v, inst.b, inst.a, dir, color);
+            rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 // h += inst.b;
             } else {
