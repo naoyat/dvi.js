@@ -79,7 +79,7 @@ function dvi_load(out, file, navi) {
         };
 
         if (navi != undefined) {
-            $(navi).attr('align','right');
+            $(navi).css({ position:"absolute", top:"5px", left:"5px", border:"1px solid #cccccc", "background-color":"#eeeeee" })
             $('<button>⇤</button>')
                 .css('font-size','120%')
                 .click(function(){dvi.page(0);})
