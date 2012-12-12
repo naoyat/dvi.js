@@ -71,7 +71,10 @@ function dvi_load(target, file) {
             }
         };
         dvi.page = function (page_no) {
-            show_page(this, page_no);
+            if (0 <= page_no && page_no < this.pages.length)
+                show_page(this, page_no);
+            else if (-this.pages.length+1 <= page_no && page_no < 0)
+                show_page(this, this.pages.length + page_no);
         };
 
         show_page_0();

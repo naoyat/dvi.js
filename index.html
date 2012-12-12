@@ -5,8 +5,17 @@
   <script type="text/javascript" src="js/jquery-1.8.3.min.js"></script>
   <script type="text/javascript" src="dvi.min.js"></script>
   <link rel="stylesheet" type="text/css" href="texfonts.min.css"></style>
+  <style>
+  span.nav { font-size: 144%; }
+  </style>
 </head>
 <body onload="if(location.search.length>1)dvi_load('#out','samples/'+location.search.substr(1));">
+
+<button onclick="dvi.page(0)"><span class="nav">⇤</span></button>
+<button onclick="dvi.prev_page()"><span class="nav">←</span></button>
+<button onclick="dvi.next_page()"><span class="nav">→</span></button>
+<button onclick="dvi.page(-1)"><span class="nav">⇥</span></button>
+
 <div id="out"></div>
 </body>
 </html>
