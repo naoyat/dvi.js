@@ -11,7 +11,7 @@
 
   <link rel="stylesheet" type="text/css" href="texfonts-local.css"></style>
 </head>
-<body>
+<body onload="if(location.search.length>1)dvi_load('#out','samples/'+location.search.substr(1),'#navi');">
 
 <div id="navi"></div>
 <div id="out"></div>
