@@ -35,5 +35,9 @@ http://github.com/naoyat | http://twitter.com/naoya_t | http://naoyat.hatenablog
 
 (c)2012 @naoya_t, with MIT License
 
+## Special Thanks
 
+* [TeX & LaTeX Advent Calendar](http://atnd.org/events/34318) ... dvi.js was born as a joke for this Advent Calendar
+* sample dvi files (and their authors) used in [demo page](http://naoyat.github.com/dvi.js/)
+* [minify-js](https://github.com/garaemon/minify-js) (by @garaemon), used for minifying dvi.js
 
