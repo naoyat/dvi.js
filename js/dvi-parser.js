@@ -171,20 +171,6 @@ function rule(h, v, width, height, dir, color) {
     }).appendTo(dvi.target);
 }
 
-function font_desc(font_info) {
-    var font_size = font_info.s/65536 * PX_PER_PT; // px
-    var family = font_info.file;
-    if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
-        font_size *= JFM_HSHRINK;
-        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
-    } else if (family.match(/goth/) || family.match(/jisg/)) {
-        font_size *= JFM_HSHRINK;
-        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
-    } else {
-        family = "'" + family + "'";
-    }
-    return p_2f(font_size)+"px "+ family;
-}
 
 function putc(h, v, font_info, str, w, dir, color) {
     var writing_mode = (dir == 0) ? '' : 'vertical-rl';
@@ -193,20 +179,7 @@ function putc(h, v, font_info, str, w, dir, color) {
         wd = w/65536 * BP_PER_PT;
     var pt = font_info.s/65536 * BP_PER_PT;
     // var pt = font_info.d / 65536;
-    var css = {
-        position: "absolute",
-        color: color,
-        'text-align': "justify",
-        'text-justify': "inter-ideograph",
-        'line-break': "none",
-//        'letter-spacing': "-1px",
-        'text-autospace': "none",
-        font: font_desc(font_info),
-        'white-space': "nowrap"
-        // 'display': 'inline-block',
-        // 'line-height': "normal",
-        // 'vertical-align': 'baseline'
-    };
+    var css = { color: color };
 
     if (BOX_MODE) {
         css.border = "solid 1px #9999cc";
@@ -249,9 +222,9 @@ function putc(h, v, font_info, str, w, dir, color) {
     }
 
     if (SEPARATE_BY_FONT)
-        $('<span />').html(str).css(css).appendTo(dvi.target);
+        $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(dvi.target);
     else
-        $('<span />').text(str).css(css).appendTo(dvi.target);
+        $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(dvi.target);
 }
 
 function puts(h, v, font_info, str, w, color) {
@@ -268,54 +241,76 @@ function puts(h, v, font_info, str, w, color) {
         wd = w/65536 * BP_PER_PT;
     var spc = sp / (str.length - 1);
 
-    var span;
-    if (SEPARATE_BY_FONT)
-        span = $('<span />').html(str);
-    else
-        span = $('<span />').text(str);
-    //$('<span />', {text:str}).text(str).
-    //$('<span />').text(str).css({
-    span.css({
-        position: "absolute",
+    var css = {
         color: color,
+        'letter-spacing': p_2f(Math.floor(spc+0.5)) +'px',
+        top: p_2f(y) +'pt',
+        left: p_2f(x) +'pt',
+        width: p_2f(wd) +'pt',
+        height: '0px'
+    };
+    if (SEPARATE_BY_FONT)
+        $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(dvi.target);
+    else
+        $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(dvi.target);
+}
+
+
+function font_desc(font_info) {
+    var font_size = font_info.s/65536 * PX_PER_PT; // px
+    var family = font_info.file;
+    if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
+        font_size *= JFM_HSHRINK;
+        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
+    } else if (family.match(/goth/) || family.match(/jisg/)) {
+        font_size *= JFM_HSHRINK;
+        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
+    } else {
+        family = "'" + family + "'";
+    }
+    return p_2f(font_size)+"px "+ family;
+};
+
+function css_for_font(font_info) {
+    return {
+        position: 'absolute',
+        // color: color,
         'line-break': "none",
-        /* 'text-align': "justify", */ 
-        'letter-spacing': p_2f(Math.floor(spc+0.5))+"px",
-        // 'letter-spacing': p_2f(spc+0.5)+"px",
-        //'letter-spacing': p_2f(0)+"pt",
-        /* 'text-autospace': "none", */
+        // 'text-align': "justify",
+        // 'text-justify': "inter-ideograph",
         'font': font_desc(font_info),
-        'white-space': "nowrap",
-        top: p_2f(y)+"pt",
-        left: p_2f(x)+"pt",
-        width: p_2f(wd)+"pt",
-        height: "0px" // p_2f(pt)+"pt";
-    }).appendTo(dvi.target);
+        'white-space': "nowrap"
+    };
+}
+
+function add_font_class(font_infos) {
+    var style = '';
+    for (var k in font_infos) {
+        var font_info = font_infos[k];
+        style += 'span.k'+ k +' {\n';
+        var css = css_for_font(font_info);
+        for (var name in css) {
+            style += '  '+ name +': '+ css[name] + ';\n';
+        }
+        style += '}\n';
+    }
+    // console.log('<style>'+ style + '</style>');
+    $('<style>' + style + '</style>').appendTo('head');
 }
 
 var ruler_span;
 
 function strWidth(font_info, str) { // px
-    var s = SEPARATE_BY_FONT ? ruler_span.html(str) : ruler_span.text(str);
-    var width = s.css({
-        font: font_desc(font_info),
-        'letter-spacing': "0px" // p_2f(0)+"pt"
-    }).get(0).offsetWidth;
+    var css = css_for_font(font_info), width;
+    css['letter-spacing'] = '0px';
+    if (SEPARATE_BY_FONT)
+        width = ruler_span.html(str).css(css).get(0).offsetWidth;
+    else
+        width = ruler_span.text(str).css(css).get(0).offsetWidth;
     ruler_span.empty();
     return width; //  / PX_PER_PT;
 }
-/*
-function strWidth_(font_info, str) { // px
-    var canvas = document.getElementById('metrics');
-    if (canvas.getContext) {
-        var context = canvas.getContext('2d');
-        context.font = font_desc(font_info);
-        var metrics = context.measureText(str);
-        return metrics.width; // px
-    }
-    return undefined;
-}
-*/
+
 function vert_adjust(font_info) {
     var tfm = tfms[font_info.file];
 
@@ -382,7 +377,7 @@ function show_page(dvi, page_no) {
     var rendering_starts_at = new Date();
 
     var page = dvi.pages[page_no];
-    var font_info = dvi.font_info;
+    var font_infos = dvi.font_infos;
 
     if (dvi.navi != undefined) {
         $('#page_no')[0].innerHTML = (1 + page_no);
@@ -408,8 +403,8 @@ function show_page(dvi, page_no) {
 
     function puts_so_far() {
         if (num_cluster_chars > 0) {
-            v_adjust = -vert_adjust(font_info[f]);
-            puts(cluster_start_h, cluster_start_v+v_adjust, font_info[f], cluster_string, cluster_width, color);
+            v_adjust = -vert_adjust(font_infos[f]);
+            puts(cluster_start_h, cluster_start_v+v_adjust, font_infos[f], cluster_string, cluster_width, color);
         }
         cluster_start_h = cluster_start_v = undefined;
         num_cluster_chars = 0;
@@ -427,7 +422,7 @@ function show_page(dvi, page_no) {
 
             var width = 0, height = 0;
             var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
-            width += info.w * font_info[f].scale * 65536;
+            width += info.w * font_infos[f].scale * 65536;
 
             if (cluster_start_h == undefined) {
                 cluster_start_h = h;
@@ -444,13 +439,13 @@ function show_page(dvi, page_no) {
                     var h_space = h - last_set_h;
                     if (h_space > 1.0 * 65536) { // 1pt以上のスペースに関して
                         // ignore negative spaces (= kerning)
-                        if (h_space < font_info[f].s * THIN_SPACE_THRESHOLD) {
+                        if (h_space < font_infos[f].s * THIN_SPACE_THRESHOLD) {
                             if (VERBOSE_MODE)
-                                console.log("[SET] thin space detected "+ p_2f(h_space/65536) + " < " + p_2f(font_info[f].s * THIN_SPACE_THRESHOLD / 65536));
+                                console.log("[SET] thin space detected "+ p_2f(h_space/65536) + " < " + p_2f(font_infos[f].s * THIN_SPACE_THRESHOLD / 65536));
                             if (USE_THINSP) {
                                 cluster_string += String.fromCharCode(0x2009); //"&thinsp;";
                                 ++num_cluster_chars;
-                                // var thin_space = font_info[f].s * 0.25;
+                                // var thin_space = font_infos[f].s * 0.25;
                                 // h_total_space += (h_space - thin_space);
                             }
                         } else {
@@ -459,12 +454,12 @@ function show_page(dvi, page_no) {
                                 // 単なる補正なので
                                 space_threshold = 0.5;
                             }
-                            if (h_space > font_info[f].s * space_threshold) {
+                            if (h_space > font_infos[f].s * space_threshold) {
                                 if (VERBOSE_MODE)
                                     console.log("[SET] space detected "+ p_2f(h_space/65536));
                                 cluster_string += " ";
                                 ++num_cluster_chars;
-                                // var single_space = font_info[f].s * 0.325;
+                                // var single_space = font_infos[f].s * 0.325;
                                 // h_total_space += (h_space - single_space);
                             }
                         }
@@ -517,24 +512,24 @@ function show_page(dvi, page_no) {
                 var h_adjust = 0, v_adjust = 0;
                 if (inst.c > 256 && info.w < tfm[0].w) {
                     if (inst.c == 0x2126) { // ・
-                        h_adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                        h_adjust = (info.w - tfm[0].w)/2 * font_infos[f].scale * 65536;
                     } else if (lya[inst.c] != undefined) { // ぁぃぅぇぉゃゅょっ
                         if (dir == 0) { // 横
-                            h_adjust = (info.w - tfm[0].w)/2 * font_info[f].scale * 65536;
+                            h_adjust = (info.w - tfm[0].w)/2 * font_infos[f].scale * 65536;
                         } else { // 縦
-                            h_adjust = (info.w - tfm[0].w)/2.5 * font_info[f].scale * 65536;
+                            h_adjust = (info.w - tfm[0].w)/2.5 * font_infos[f].scale * 65536;
                         }
                     } else if ((0x2146 <= inst.c && inst.c <= 0x215B) & !(inst.c & 1)) { // open-paren
-                        h_adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
+                        h_adjust = (info.w - tfm[0].w) * font_infos[f].scale * 65536;
                     }
                 }
                 if (dir == 0) {
-                    v_adjust = -vert_adjust(font_info[f]);
-                    putc(h+h_adjust, v+v_adjust, font_info[f], inst._, width, dir, color);
+                    v_adjust = -vert_adjust(font_infos[f]);
+                    putc(h+h_adjust, v+v_adjust, font_infos[f], inst._, width, dir, color);
                     h += width;
                 } else {
-                    v_adjust = horiz_adjust(font_info[f]);
-                    putc(h+v_adjust, v+h_adjust, font_info[f], inst._, width, dir, color);
+                    v_adjust = horiz_adjust(font_infos[f]);
+                    putc(h+v_adjust, v+h_adjust, font_infos[f], inst._, width, dir, color);
                     v += width;
                 }
             } // NON CLUSTER MODE
@@ -557,7 +552,7 @@ function show_page(dvi, page_no) {
             }
             width += inst.w;
 
-            putc(h, v, font_info[f], str, width, dir, color);
+            putc(h, v, font_infos[f], str, width, dir, color);
             if (dir == 0) {
                 h += width;
             } else {
@@ -670,9 +665,9 @@ function show_page(dvi, page_no) {
             if (CLUSTER_MODE && SEPARATE_BY_FONT) puts_so_far();
 
             f = inst.k;
-            tfm = tfms[font_info[f].file];
+            tfm = tfms[font_infos[f].file];
             if (VERBOSE_MODE)
-                console.log("[FNT] "+ font_info[f].file + " " + p_2f(font_info[f].s/65536) + "pt");
+                console.log("[FNT] "+ font_infos[f].file + " " + p_2f(font_infos[f].s/65536) + "pt");
             break;
 
         case 'fnt_def':
@@ -733,11 +728,11 @@ function dump_code(insts) {
 }
 
 function grouping(insts) {
-    var document = {
+    var dvi = {
         preamble: undefined,
         pages: [],
         postamble: undefined,
-        font_info: {}
+        font_infos: {}
     };
 
     var stack = [];
@@ -748,27 +743,27 @@ function grouping(insts) {
 
         switch (inst.op) {
         case 'pre':
-            document.preamble = inst;
+            dvi.preamble = inst;
             break;
 
         case 'bop':
             count = inst.c;
             break;
         case 'eop':
-            document.pages.push({count:count, insts:stack});
+            dvi.pages.push({count:count, insts:stack});
             stack = [];
             break;
 
         case 'post':
-            document.postamble = inst;
+            dvi.postamble = inst;
             break;
         case 'post_post':
             break;
 
         case 'fnt_def':
-            if (document.font_info[inst.k] == undefined) {
+            if (dvi.font_infos[inst.k] == undefined) {
                 inst.scale = inst.s / inst.d;
-                document.font_info[inst.k] = inst;
+                dvi.font_infos[inst.k] = inst;
                 if (TFM_LOAD_ON_DEMAND) tfm_load(inst.file);
                 else {
                     if (tfms[inst.file] == undefined) {
@@ -784,7 +779,8 @@ function grouping(insts) {
         }
     }
 
-    return document;
+    add_font_class(dvi.font_infos);
+    return dvi;
 }
 
 function bakoma(c) {
