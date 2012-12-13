@@ -11,7 +11,7 @@
   <link href="http://developer.github.com/shared/css/pygments.css" media="screen" rel="stylesheet" type="text/css">
   <link rel="stylesheet" type="text/css" href="texfonts.min.css"></style>
 </head>
-<body class="api" onload="if(location.search.length>1)dvi_load('#out','samples/'+location.search.substr(1),'#navi');">
+<body class="api" onload="if (args.dvi) dvi_load('#out','samples/'+args.dvi,'#navi');">
 
 <div id="navi"></div>
 
@@ -33,36 +33,37 @@
 <h3><a name="%E4%BD%90%E8%97%A4%E7%AF%A4%EF%BC%A0%E6%9D%B1%E5%8C%97%E5%A4%A7%E3%83%BB%E7%90%86-%E3%81%95%E3%82%93%E3%81%AE%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E9%9B%86%E3%81%8B%E3%82%89" class="anchor" href="#%E4%BD%90%E8%97%A4%E7%AF%A4%EF%BC%A0%E6%9D%B1%E5%8C%97%E5%A4%A7%E3%83%BB%E7%90%86-%E3%81%95%E3%82%93%E3%81%AE%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E9%9B%86%E3%81%8B%E3%82%89"><span class="mini-icon mini-icon-link"></span></a><a href="http://www.math.tohoku.ac.jp/%7Eatsushi/Tex/Projector/sample.html">佐藤篤＠東北大・理 さんのサンプル集から</a></h3>
 
 <ul>
-<li><a href="?rgbcolor">色のサンプル</a></li>
-<li><a href="?sample">seminarパッケージの使用例</a></li>
-<li><a href="?ss2006">代数多様体上の有理点分布</a></li>
-<li><a href="?sendai06">類数が5で割り切れる二次体について</a></li>
-<li><a href="?olsample">seminarパッケージの使用例（overlie.styを使った場合）</a></li>
+<li><a href="?dvi=rgbcolor">色のサンプル</a></li>
+<li><a href="?dvi=sample">seminarパッケージの使用例</a></li>
+<li><a href="?dvi=ss2006">代数多様体上の有理点分布</a></li>
+<li><a href="?dvi=sendai06">類数が5で割り切れる二次体について</a></li>
+<li><a href="?dvi=olsample">seminarパッケージの使用例（overlie.styを使った場合）</a></li>
 </ul>
 
 <h3><a name="%E3%81%9D%E3%81%AE%E4%BB%96%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB" class="anchor" href="#%E3%81%9D%E3%81%AE%E4%BB%96%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB"><span class="mini-icon mini-icon-link"></span></a>その他サンプル</h3>
 
 <ul>
-<li><a href="?r5rs">R5RS日本語訳（犬飼 大さん)</a></li>
-<li><a href="?naochan!">dviout/prtに付属のpTeX縦書きサンプル</a></li>
-<li><a href="?ex30">Exemple d'un document segmenté</a></li>
-<li><a href="?example1">http://bodoni.lib.liv.ac.uk/fab4/examples.html から</a></li>
+<li><a href="?dvi=r5rs">R5RS日本語訳（犬飼 大さん)</a></li>
+<li><a href="?dvi=naochan!">dviout/prtに付属のpTeX縦書きサンプル</a></li>
+<li><a href="?dvi=ex30">Exemple d'un document segmenté</a></li>
+<li><a href="?dvi=example1">http://bodoni.lib.liv.ac.uk/fab4/examples.html から</a></li>
 <li>
-<a href="?dragonheart">ドラゴン曲線（TeXブック付録Dのあれ）</a> (by <a href="http://qiita.com/items/5a053dd952cf8baafdf1">@golden_lucky</a>)</li>
+<a href="?dvi=dragonheart">ドラゴン曲線（TeXブック付録Dのあれ）</a> (by <a href="http://qiita.com/items/5a053dd952cf8baafdf1">@golden_lucky</a>)</li>
 <li>
-<a href="?genfunc">「ミルカさんとフィボナッチ数列」</a> (by <a href="http://www.hyuki.com/story/genfunc.html">@hyuki</a>)</li>
-</ul> 
+<a href="?dvi=genfunc">「ミルカさんとフィボナッチ数列」</a> (by <a href="http://www.hyuki.com/story/genfunc.html">@hyuki</a>)</li>
+</ul>
+
+<h3>[NEW!] clustering mode</h3>
+
+<p>通常、１文字１文字をspanで配置しているが、URLの末尾に<tt>"&amp;cluster=1"</tt>を付加することで
+同一行・同一フォントの連続文字列をひとまとめのspanにして配置する。</p>
+
+<p>現時点では<tt>letter-spacing</tt>属性で均等割になるように調整しているが、整数値しか受け付けないため若干ずれる。</p>
 
 </div>
 </div>
 </div>
 <canvas id="metrics" width="0" height="0" style="visibility:hidden; position:absolute;"></canvas>
-
-<script type="text/javascript">
-if (location.search.length > 1) {
-    dvi_load('#out', "samples/"+ location.search.substr(1));
-}
-</script>
 
 <script type="text/javascript"><!--
     hatena_counter_name = "n4_t";
