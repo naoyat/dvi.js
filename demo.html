@@ -6,7 +6,7 @@
   <script type="text/javascript" src="dvi.min.js"></script>
   <link rel="stylesheet" type="text/css" href="texfonts.min.css"></style>
 </head>
-<body onload="if(location.search.length>1)dvi_load('#out','./'+location.search.substr(1),'#navi');">
+<body onload="if(args.dvi) dvi_load('#out',args.dvi,'#navi');">
 
 <div id="navi"></div>
 <div id="out"></div>
