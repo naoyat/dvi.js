@@ -20,11 +20,16 @@ An example displaying `sample.dvi` in the same directory as this html:
   <script type="text/javascript" src="http://naoyat.github.com/dvi.js/dvi.min.js"></script>
   <link rel="stylesheet" type="text/css" href="http://naoyat.github.com/dvi.js/texfonts.min.css"></style>
 </head>
-<body onload="dvi_load('#out','sample.dvi');">
+<body onload="dvi_load('#out','sample.dvi','#navi');">
+
+<div id="navi"></div>
 <div id="out"></div>
+
 </body>
 </html>
 ```
+
+
 
 ## Author
 

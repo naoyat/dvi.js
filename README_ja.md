@@ -41,7 +41,8 @@ http://naoyat.github.com/dvi.js/
   <script type="text/javascript" src="http://naoyat.github.com/dvi.js/dvi.min.js"></script>
   <link rel="stylesheet" type="text/css" href="http://naoyat.github.com/dvi.js/texfonts.min.css"></style>
 </head>
-<body onload="dvi_load('#out','sample.dvi');">
+<body onload="dvi_load('#out','sample.dvi','#navi');">
+<div id="navi"></div>
 <div id="out"></div>
 </body>
 </html>
@@ -54,11 +55,11 @@ iPhoneでも綺麗に出るけど１ページ目しか見えないので、フ�
 
 ## TODO
 
-* コピペfriendlyなモードを作る
-* TFMの置き場を考える（現状１ディレクトリにひとまとめ）
-* システムフォントのメトリクスとの誤差を考慮
-* dvi.min.js 的な物を作る
-* 英語の紹介ページを作る
+* コピペfriendlyなモードを作る → clustering modeを作った。`http://path/to/index.html?dvi=hogehoge&cluster=1`
+* TFMの置き場を考える（現状１ディレクトリにひとまとめ）→ webフォントが用意できているTFMをJS化した
+* システムフォントのメトリクスとの誤差を考慮 →Macでは見れているがWindows、Linuxでどうなのか
+* dvi.min.js 的な物を作る →作った
+* 英語の紹介ページを作る →とりあえずgithubは英語化
 
 ## 謝辞
 
