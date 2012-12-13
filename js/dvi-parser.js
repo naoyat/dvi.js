@@ -1,13 +1,19 @@
-var DO_REJOIN = false;
-//var DO_REJOIN = true;
-var REJOIN_W = true;
+var CLUSTER_MODE = false;
 var BOX_MODE = false;
+var VERBOSE_MODE = false;
 
-var PX_PER_PT = 1.3325;
-var PT72_PER_PT = 72 / 72.27;
+var PX_PER_BP = 1.3325; // 1bp = 1.33px
+var BP_PER_PT = 72 / 72.27; // 72.27pt = 72bp
+var PX_PER_PT = PX_PER_BP * BP_PER_PT;
+
 var JFM_SHRINK = 0.962216;
 var JFM_HSHRINK = 0.9164428;
 var TFM_LOAD_ON_DEMAND = false;
+
+var V_THRESHOLD = 10.0; // 10pt
+var SEPARATE_BY_FONT = true;
+var USE_THINSP = false;
+var THIN_SPACE_THRESHOLD = 0.3;
 
 var dvi = undefined;
 
@@ -26,6 +32,24 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
     user_agent = AGENT_UNKNOWN;
 }
 
+var args = (function (querystring) {
+    var args = {};
+    var pair = querystring.split('&');
+    for (var i = 0; i < pair.length; ++i) {
+        var kv = pair[i].split('=');
+        if (kv.length == 1 && args.dvi == undefined)
+            args.dvi = querystring;
+        else
+            args[kv[0]] = kv[1];
+  }
+  return args;
+})(location.search.substring(1));
+
+if (args.cluster != undefined) CLUSTER_MODE = (args.cluster == 1);
+if (args.box != undefined) BOX_MODE = (args.box == 1);
+if (args.verbose != undefined) VERBOSE_MODE = (args.verbose == 1);
+if (args.sbf != undefined) SEPARATE_BY_FONT = (args.sbf == 1);
+
 document.onkeydown = dvi_keyevent;
 var page_mode = 0;
 
@@ -38,7 +62,7 @@ function show_page_0() {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
             $(dvi.target).children().remove();
-            $('<span />', { text: "now rendering..." }).css({ "text-decoration": "blink" }).appendTo(dvi.target);
+            $('<span />').text("now rendering...").css({ "text-decoration": "blink" }).appendTo(dvi.target);
         }
         ++page_mode;
         setTimeout(show_page_0, 0.1);
@@ -56,7 +80,8 @@ function dvi_load(out, file, navi) {
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
-        dvi = rejoin_chars(grouping(insts));
+        // dvi = rejoin_chars(grouping(insts));
+        dvi = grouping(insts);
         dvi.target = out;
         dvi.navi = navi;
         dvi.curr_page = 0;
@@ -73,13 +98,13 @@ function dvi_load(out, file, navi) {
         };
         dvi.page = function (page_no) {
             if (0 <= page_no && page_no < this.pages.length)
-                show_page(this, page_no);
+                show_page(this, this.curr_page = page_no);
             else if (-this.pages.length+1 <= page_no && page_no < 0)
-                show_page(this, this.pages.length + page_no);
+                show_page(this, this.curr_page = (this.pages.length + page_no));
         };
 
         if (navi != undefined) {
-            $(navi).css({ position:"absolute", top:"5px", left:"5px", border:"1px solid #cccccc", "background-color":"#eeeeee" })
+            $(navi).css({ position:"absolute", top:"5px", left:"5px", border:"1px solid #cccccc", "background-color":"#eeeeee" });
             $('<button>⇤</button>')
                 .css('font-size','120%')
                 .click(function(){dvi.page(0);})
@@ -120,11 +145,11 @@ function dvi_keyevent(evt) {
 }
 
 function rule(h, v, width, height, dir, color) {
-    var left   = 72 + h / 65536 * PT72_PER_PT,
-        bottom = 72 + v / 65536 * PT72_PER_PT,
+    var left   = 72 + h / 65536 * BP_PER_PT,
+        bottom = 72 + v / 65536 * BP_PER_PT,
         top,
-        wd = width / 65536 * PT72_PER_PT,
-        ht = height / 65536 * PT72_PER_PT;
+        wd = width / 65536 * BP_PER_PT,
+        ht = height / 65536 * BP_PER_PT;
 
     if (dir == 0) {
         top = bottom - ht;
@@ -146,24 +171,27 @@ function rule(h, v, width, height, dir, color) {
     }).appendTo(dvi.target);
 }
 
-function puts(h, v, width, height, dir, font_info, str, color) {
-    var writing_mode = (dir == 0) ? '' : 'vertical-rl';
-    var x = 72 + h / 65536 * PT72_PER_PT,
-        y = 72 + v / 65536 * PT72_PER_PT,
-        w = width / 65536 * PT72_PER_PT,
-        ht = height / 65536 * PT72_PER_PT;
-    // var pt = font_info.s / 0.9164428 / 65536 * PT72_PER_PT;
-    var pt = font_info.s / 65536 * PT72_PER_PT;
+function font_desc(font_info) {
+    var font_size = font_info.s/65536 * PX_PER_PT; // px
     var family = font_info.file;
     if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
-        pt *= JFM_HSHRINK;
+        font_size *= JFM_HSHRINK;
         family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
     } else if (family.match(/goth/) || family.match(/jisg/)) {
-        pt *= JFM_HSHRINK;
+        font_size *= JFM_HSHRINK;
         family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
     } else {
         family = "'" + family + "'";
     }
+    return p_2f(font_size)+"px "+ family;
+}
+
+function putc(h, v, font_info, str, w, dir, color) {
+    var writing_mode = (dir == 0) ? '' : 'vertical-rl';
+    var x = 72 + h/65536 * BP_PER_PT,
+        y = 72 + v/65536 * BP_PER_PT,
+        wd = w/65536 * BP_PER_PT;
+    var pt = font_info.s/65536 * BP_PER_PT;
     // var pt = font_info.d / 65536;
     var css = {
         position: "absolute",
@@ -173,7 +201,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         'line-break': "none",
 //        'letter-spacing': "-1px",
         'text-autospace': "none",
-        font: p_2f(pt)+"pt "+ family,
+        font: font_desc(font_info),
         'white-space': "nowrap"
         // 'display': 'inline-block',
         // 'line-height': "normal",
@@ -190,7 +218,7 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         if (family_ == 'min' || family_ == 'goth'
             || family_ == 'jis' || family_ == 'jisg') {
         }
-        y -= ht;
+        /// y -= ht;
 
         css.top = p_2f(y)+"pt";
         css.left = p_2f(x)+"pt";
@@ -220,12 +248,139 @@ function puts(h, v, width, height, dir, font_info, str, color) {
         css['-o-writing-mode'] = 'vertical-rl';
     }
 
-    $('<span />', {
-        text: str
-    }).css(css).appendTo(dvi.target);
+    if (SEPARATE_BY_FONT)
+        $('<span />').html(str).css(css).appendTo(dvi.target);
+    else
+        $('<span />').text(str).css(css).appendTo(dvi.target);
+}
+
+function puts(h, v, font_info, str, w, color) {
+    var width_on_canvas = strWidth(font_info, str); // px
+    if (VERBOSE_MODE)
+        console.log(":sw: "+ p_2f(width_on_canvas/PX_PER_PT) +" | "+ p_2f(w/65536));
+    var sp = w/65536 * PX_PER_PT - width_on_canvas; // px
+
+    if (VERBOSE_MODE)
+        console.log("[SETS] '" + str + " ("+ str.length +")', at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(w/65536) +" ; sp="+ p_2f(sp));
+
+    var x = 72 + h/65536 * BP_PER_PT,
+        y = 72 + v/65536 * BP_PER_PT,
+        wd = w/65536 * BP_PER_PT;
+    var spc = sp / (str.length - 1);
+
+    var span;
+    if (SEPARATE_BY_FONT)
+        span = $('<span />').html(str);
+    else
+        span = $('<span />').text(str);
+    //$('<span />', {text:str}).text(str).
+    //$('<span />').text(str).css({
+    span.css({
+        position: "absolute",
+        color: color,
+        'line-break': "none",
+        /* 'text-align': "justify", */ 
+        'letter-spacing': p_2f(Math.floor(spc+0.5))+"px",
+        // 'letter-spacing': p_2f(spc+0.5)+"px",
+        //'letter-spacing': p_2f(0)+"pt",
+        /* 'text-autospace': "none", */
+        'font': font_desc(font_info),
+        'white-space': "nowrap",
+        top: p_2f(y)+"pt",
+        left: p_2f(x)+"pt",
+        width: p_2f(wd)+"pt",
+        height: "0px" // p_2f(pt)+"pt";
+    }).appendTo(dvi.target);
+}
+
+var ruler_span;
+
+function strWidth(font_info, str) { // px
+    var s = SEPARATE_BY_FONT ? ruler_span.html(str) : ruler_span.text(str);
+    var width = s.css({
+        font: font_desc(font_info),
+        'letter-spacing': "0px" // p_2f(0)+"pt"
+    }).get(0).offsetWidth;
+    ruler_span.empty();
+    return width; //  / PX_PER_PT;
+}
+/*
+function strWidth_(font_info, str) { // px
+    var canvas = document.getElementById('metrics');
+    if (canvas.getContext) {
+        var context = canvas.getContext('2d');
+        context.font = font_desc(font_info);
+        var metrics = context.measureText(str);
+        return metrics.width; // px
+    }
+    return undefined;
+}
+*/
+function vert_adjust(font_info) {
+    var tfm = tfms[font_info.file];
+
+    var scaled_size = font_info.s / 65536; // ポイント数
+    // var design_size = font_info.d / 65536; // デザイン・サイズ
+    // var r = scaled_size / 10;
+    var pt = scaled_size;
+    var h_ = 0;
+    if (tfm.type == 'jfm') {
+        // 日本語のフォントは上に1/6余白がある
+        switch (user_agent) {
+        case AGENT_SAFARI:
+            h_ = tfm.max_height * font_info.scale + pt*0.3;
+            break;
+        default:
+            h_ = tfm.max_height * font_info.scale + pt*0.18;
+            break;
+        }
+    } else {
+        h_ = tfm.max_height * font_info.scale;
+    }
+    return h_ * 65536;
+}
+
+function horiz_adjust(font_info) {
+    var tfm = tfms[font_info.file];
+
+    var scaled_size = font_info.s / 65536; // ポイント数
+    // var design_size = font_info.d / 65536; // デザイン・サイズ
+    // var r = scaled_size / 10;
+    var pt = scaled_size;
+    var v_ = 0;
+    if (tfm.type == 'jfm') {
+        switch (user_agent) {
+        case AGENT_CHROME:
+        default:
+            v_ = pt*(1/2 + 0.18 + 0.2);
+            break;
+        case AGENT_FIREFOX:
+            v_ = pt*(-1/2 + 0.18);
+            break;
+        case AGENT_SAFARI:
+            v_ = pt*(1/2 + 0.18 + 0.3);
+            break;
+        }
+    } else {
+        switch (user_agent) {
+        case AGENT_CHROME:
+            v_ = pt*(0.125 + 0.1) + tfm.max_height * font_info.scale;
+            break;
+        case AGENT_SAFARI:
+            v_ = pt*(0.125 + 0.08) + tfm.max_height * font_info.scale;
+            break;
+        case AGENT_FIREFOX:
+        default:
+            v_ = pt*0.125 + tfm.max_height * font_info.scale;
+            break;
+        }
+    }
+    return v_ * 65536;
 }
 
 function show_page(dvi, page_no) {
+    var rendering_starts_at = new Date();
+
     var page = dvi.pages[page_no];
     var font_info = dvi.font_info;
 
@@ -233,6 +388,7 @@ function show_page(dvi, page_no) {
         $('#page_no')[0].innerHTML = (1 + page_no);
     }
     $(dvi.target).children().remove();
+    ruler_span = $('<span />').text('').appendTo(dvi.target);
 
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
@@ -246,18 +402,118 @@ function show_page(dvi, page_no) {
                 0x2543:1, 0x2563:1, 0x2565:1, 0x2567:1, 0x256E:1, // ッャュョヮ
                 0x2575:1, 0x2576:1 }; // ヵヶ
 
+    var cluster_start_h = undefined, cluster_start_v = undefined, num_cluster_chars = 0, cluster_string = "";
+    var last_set_h = undefined, last_set_v = undefined, last_c = undefined, last__ = undefined;
+    var cluster_width = 0; // , h_total_space = 0;
+
+    function puts_so_far() {
+        if (num_cluster_chars > 0) {
+            v_adjust = -vert_adjust(font_info[f]);
+            puts(cluster_start_h, cluster_start_v+v_adjust, font_info[f], cluster_string, cluster_width, color);
+        }
+        cluster_start_h = cluster_start_v = undefined;
+        num_cluster_chars = 0;
+        cluster_string = "";
+        cluster_width = 0;
+        last_set_h = last_set_v = undefined;
+        last__ = last_c = undefined;
+    }
+
     for (var j in page.insts) {
         var inst = page.insts[j];
         switch (inst.op) {
         case 'set': // orig
+            if (tfm == undefined) break;
+
             var width = 0, height = 0;
-            var info_ = undefined;
-            if (tfm == undefined) {
-                console.log("tfm = undefined");
+            var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
+            width += info.w * font_info[f].scale * 65536;
+
+            if (cluster_start_h == undefined) {
+                cluster_start_h = h;
+                cluster_start_v = v;
+            }
+            if (last_set_h == undefined) {
+                last_set_h = h;
+                last_set_v = v;
+            }
+
+            if (CLUSTER_MODE) {
+                var lift = (cluster_start_v - v) / 65536;
+                if (Math.abs(lift) < V_THRESHOLD) {
+                    var h_space = h - last_set_h;
+                    if (h_space > 1.0 * 65536) { // 1pt以上のスペースに関して
+                        // ignore negative spaces (= kerning)
+                        if (h_space < font_info[f].s * THIN_SPACE_THRESHOLD) {
+                            if (VERBOSE_MODE)
+                                console.log("[SET] thin space detected "+ p_2f(h_space/65536) + " < " + p_2f(font_info[f].s * THIN_SPACE_THRESHOLD / 65536));
+                            if (USE_THINSP) {
+                                cluster_string += String.fromCharCode(0x2009); //"&thinsp;";
+                                ++num_cluster_chars;
+                                // var thin_space = font_info[f].s * 0.25;
+                                // h_total_space += (h_space - thin_space);
+                            }
+                        } else {
+                            var space_threshold = THIN_SPACE_THRESHOLD;
+                            if (last__ == '、' || last__ == '。') {
+                                // 単なる補正なので
+                                space_threshold = 0.5;
+                            }
+                            if (h_space > font_info[f].s * space_threshold) {
+                                if (VERBOSE_MODE)
+                                    console.log("[SET] space detected "+ p_2f(h_space/65536));
+                                cluster_string += " ";
+                                ++num_cluster_chars;
+                                // var single_space = font_info[f].s * 0.325;
+                                // h_total_space += (h_space - single_space);
+                            }
+                        }
+                    } else {
+                        // h_total_space += h_space;
+                    }
+                    cluster_width += h_space;
+                    if (VERBOSE_MODE)
+                        console.log("[SET]+ '"+ inst._ +"' at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(width/65536));
+                    /*
+                    if (lift > 2.0) {
+                        cluster_string += "<sup>"+ inst._ +"</sup>";
+                    } else if (lift < -2.0) {
+                        cluster_string += "<sub>"+ inst._ +"</sub>";
+                    } else {
+                        cluster_string += inst._;
+                    }
+                     */
+                    cluster_string += inst._;
+                    ++num_cluster_chars;
+                    cluster_width += width;
+
+                } else {
+                    // lift > THRESHOLD
+                    if (CLUSTER_MODE) { 
+                        puts_so_far();
+                        cluster_start_h = h;
+                        cluster_start_v = v;
+                        ++num_cluster_chars;
+                        cluster_string = inst._;
+                        cluster_width = width;
+                    }
+                    if (VERBOSE_MODE)
+                        console.log("\n[SET]! '"+ inst._ +"' at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(width/65536));
+                }
+
+                last_set_h = h + width;
+                last_set_v = v;
+                last__ = inst._;
+                last_c = inst.c;
+
+                if (dir == 0) {
+                    h += width;
+                } else {
+                    v += width;
+                }
+                // CLUSTER_MODE
             } else {
-                var info = (tfm[inst.c] == undefined) ? tfm[0] : tfm[inst.c];
-                info_ = info;
-                width += info.w * font_info[f].scale * 65536;
+                // NON CLUSTER_MODE
                 var h_adjust = 0, v_adjust = 0;
                 if (inst.c > 256 && info.w < tfm[0].w) {
                     if (inst.c == 0x2126) { // ・
@@ -272,86 +528,18 @@ function show_page(dvi, page_no) {
                         h_adjust = (info.w - tfm[0].w) * font_info[f].scale * 65536;
                     }
                 }
-
-                var scaled_size = font_info[f].s / 65536; // ポイント数
-                var design_size = font_info[f].d / 65536; // デザイン・サイズ
-                var r = scaled_size / 10;
-                // font_info[f].scale : TFMからの拡大率
-
-                var pt = scaled_size; // * PT72_PER_PT;
-
-                //var xh = 9.1644287109375/10 * scaled_ptsize;
                 if (dir == 0) {
-                    var h_ = 0;
-                    if (tfm.type == 'jfm') {
-                        // 日本語のフォントは上に1/6余白がある
-                        switch (user_agent) {
-                        case AGENT_SAFARI:
-                            h_ = tfm.max_height * font_info[f].scale + pt*0.3;
-                            break;
-                        default:
-                            h_ = tfm.max_height * font_info[f].scale + pt*0.18;
-                            break;
-                        }
-                    } else {
-                        // h_ = pt * 0.73; //68;
-                        h_ = tfm.max_height * font_info[f].scale;
-                    }
-                    height = h_ * 65536;
+                    v_adjust = -vert_adjust(font_info[f]);
+                    putc(h+h_adjust, v+v_adjust, font_info[f], inst._, width, dir, color);
+                    h += width;
                 } else {
-                    var v_ = 0;
-                    if (tfm.type == 'jfm') {
-                        switch (user_agent) {
-                        case AGENT_CHROME:
-                        default:
-                            v_ = pt*(1/2 + 0.18 + 0.2);
-                            break;
-                        case AGENT_FIREFOX:
-                            v_ = pt*(-1/2 + 0.18);
-                            break;
-                        case AGENT_SAFARI:
-                            v_ = pt*(1/2 + 0.18 + 0.3);
-                            break;
-                        }
-                    } else {
-                        switch (user_agent) {
-                        case AGENT_CHROME:
-                            v_ = pt*(0.125 + 0.1) + tfm.max_height * font_info[f].scale;
-                            break;
-                        case AGENT_SAFARI:
-                            v_ = pt*(0.125 + 0.08) + tfm.max_height * font_info[f].scale;
-                            break;
-                        case AGENT_FIREFOX:
-                        default:
-                            v_ = pt*0.125 + tfm.max_height * font_info[f].scale;
-                            break;
-                        }
-                    }
-                    v_adjust = v_ * 65536;
+                    v_adjust = horiz_adjust(font_info[f]);
+                    putc(h+v_adjust, v+h_adjust, font_info[f], inst._, width, dir, color);
+                    v += width;
                 }
-            }
-            if (dir == 0) {
-/*
-                console.log(sprintf("[%s %s %s] %s: (%s %s %s %s) | h=%s+%s v=%s+%s wd=%s(/%s)*%s=%s ht=%s | design_size=%s ex=%s em=%s | (w:%s h:%s d:%s i:%s)",
-                                    font_info[f].file,
-                                    p_2g(font_info[f].s / 65536), p_2g(font_info[f].d / 65536),
-                                    inst._,
-                                    p_2g(info_.w), p_2g(info_.h), p_2g(info_.d), p_2g(info_.i),
-                                    p_2g(h/65536), p_2g(h_adjust/65536),
-                                    p_2g(v/65536), p_2g(v_adjust/65536),
-                                    p_2g(info.w), p_2g(tfm[0].w), p_2g(font_info[f].scale), p_2g(info.w*font_info[f].scale),
-                                    p_2g(height/65536),
-                                    p_2g(tfm.design_size/1048576), p_2g(tfm.x_height), p_2g(tfm.quad),
-                                    p_2g(tfm.max_width), p_2g(tfm.max_height), p_2g(tfm.max_depth), p_2g(tfm.max_italic)
-                                   ));
-*/
-                puts(h+h_adjust, v+v_adjust, width, height, dir, font_info[f], inst._, color);
-                h += width;
-            } else {
-                puts(h+v_adjust, v+h_adjust, width, height, dir, font_info[f], inst._, color);
-                v += width;
-            }
+            } // NON CLUSTER MODE
             break;
+
         case 'sets':
             var str = inst.s;
             var width = 0, height = 0;
@@ -368,15 +556,18 @@ function show_page(dvi, page_no) {
                 width -= info.w * 65536 * inst.sp;
             }
             width += inst.w;
-            
-            puts(h, v, width, height, dir, font_info[f], str, color);
+
+            putc(h, v, font_info[f], str, width, dir, color);
             if (dir == 0) {
                 h += width;
             } else {
                 v += width;
             }
             break;
+
         case 'set_rule':
+            if (VERBOSE_MODE)
+                console.log("[RULE] at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(inst.b/65536) + ", height="+ p_2f(inst.a/65536));
             rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 h += inst.b;
@@ -387,6 +578,7 @@ function show_page(dvi, page_no) {
             // var height = inst.a / 65536;
             // var width = inst.b / 65536;
             break;
+
         case 'put_rule':
             rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
@@ -395,67 +587,98 @@ function show_page(dvi, page_no) {
                 // v += inst.b;
             }
             break;
+
         case 'push':
             st.push([h,v,w,x,y,z,dir]);
             break;
+
         case 'pop':
             var last_h = h, last_v = v;
             var tmp = st.pop();
             h = tmp[0]; v = tmp[1]; w = tmp[2]; x = tmp[3]; y = tmp[4]; z = tmp[5]; dir = tmp[6];
+            if (h != last_h || v != last_v) {
+                if (VERBOSE_MODE)
+                    console.log("[POP] (x,y) += ("+ p_2f((h-last_h)/65536) +", "+ p_2f((v-last_v)/65536) +")");
+            }
             break;
+
         case 'right':
+            if (VERBOSE_MODE)
+                console.log("[RIGHT] x += "+ p_2f(inst.b/65536));
             if (dir == 0) {
                 h += inst.b;
             } else {
                 v += inst.b;
             }
             break;
+
         case 'w':
             if (inst.b) w = inst.b;
+            if (VERBOSE_MODE)
+                console.log("[W] x += "+ p_2f(w/65536));
             if (dir == 0) {
                 h += w;
             } else {
                 v += w;
             }
             break;
+
         case 'x':
             if (inst.b) x = inst.b;
+            if (VERBOSE_MODE)
+                console.log("[X] x += "+ p_2f(x/65536));
             if (dir == 0) {
                 h += x;
             } else {
                 v += x;
             }
             break;
+
         case 'down':
+            if (VERBOSE_MODE)
+                console.log("[DOWN] y += "+ p_2f(inst.a/65536));
             if (dir == 0) {
                 v += inst.a;
             } else {
                 h -= inst.a;
             }
             break;
+
         case 'y':
             if (inst.a) y = inst.a;
+            if (VERBOSE_MODE)
+                console.log("[Y] y += "+ p_2f(y/65536));
             if (dir == 0) {
                 v += y;
             } else {
                 h -= y;
             }
             break;
+
         case 'z':
             if (inst.a) z = inst.a;
+            if (VERBOSE_MODE)
+                console.log("[Z] y += "+ p_2f(z/65536));
             if (dir == 0) {
                 v += z;
             } else {
                 h -= z;
             }
             break;
+
         case 'fnt':
+            if (CLUSTER_MODE && SEPARATE_BY_FONT) puts_so_far();
+
             f = inst.k;
             tfm = tfms[font_info[f].file];
+            if (VERBOSE_MODE)
+                console.log("[FNT] "+ font_info[f].file + " " + p_2f(font_info[f].s/65536) + "pt");
             break;
+
         case 'fnt_def':
             // font_info[inst.k] = inst;
             break;
+
         case 'xxx':
             if (inst.x.match(/color (.*)/)) {
                 var cmd = RegExp.$1;
@@ -484,13 +707,20 @@ function show_page(dvi, page_no) {
                 }
             }
             break;
+
         case 'dir':
             dir = inst.d;
             break;
+
         default:
             break;
         }
     }
+
+    if (CLUSTER_MODE) puts_so_far();
+
+    var rendering_ends_at = new Date();
+    console.log("PAGE "+ (1 + page_no) + ": RENDERING TIME = "+ p_2f((rendering_ends_at - rendering_starts_at)/1000) + "sec");
 }
 
 function dump_code(insts) {
@@ -500,168 +730,6 @@ function dump_code(insts) {
         dumped += JSON.stringify(inst).replace(/,/g,", ").replace(/"/g,"") + "\n";
     }
     return dumped;
-}
-
-function rejoin_chars(document) {
-    var h, v, w, x, y, z, dir;
-    var f, st;
-
-    for (var i in document.pages) {
-        var page = document.pages[i];
-
-        // bop
-        h = v = w = x = y = z = dir = 0;
-        st = [];
-
-        var rejoined_insts = [];
-        var sets_c = [], sets_s = "", sets_w = 0, sets_sp = 0;
-        for (var j in page.insts) {
-            var inst = page.insts[j];
-            var skip = false;
-            switch (inst.op) {
-            case 'set':
-                if (DO_REJOIN) {
-                    sets_c.push(inst.c);
-                    sets_s += inst._;
-                    skip = true;
-                }
-                break;
-            case 'set_rule':
-                if (dir == 0) {
-                    h += inst.b;
-                } else {
-                    v += inst.b;
-                }
-                break;
-            case 'push':
-                st.push([h,v,w,x,y,z,dir]);
-                break;
-            case 'pop':
-                if (sets_c.length > 0) {
-                    rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
-                    sets_c = []; sets_s = ""; sets_w = 0; sets_sp = 0;
-                }
-                var last_h = h, last_v = v;
-                var tmp = st.pop();
-                h = tmp[0]; v = tmp[1]; w = tmp[2]; x = tmp[3]; y = tmp[4]; z = tmp[5]; dir = tmp[6];
-                break;
-
-            case 'right':
-                if (dir == 0) {
-                    h += inst.b;
-                } else {
-                    v += inst.b;
-                }
-                // skipping
-                if (REJOIN_W && f != undefined && sets_c.length > 0) {
-                    var em = Math.floor(4 * inst.b / document.font_info[f].s);
-                    if (em >= -1) {
-                        if (em >= 1) {
-                            sets_c.push(0x20);
-                            sets_s += ' ';
-                            sets_sp++;
-                        }
-                        sets_w += inst.b;
-                        skip = true;
-                    }
-                }
-                break;
-            case 'w':
-                if (inst.b) w = inst.b;
-                if (dir == 0) {
-                    h += w;
-                } else {
-                    v += w;
-                }
-                // skipping
-                if (REJOIN_W && f != undefined && sets_c.length > 0) {
-                    var em = Math.floor(4 * w / document.font_info[f].s);
-                    if (em >= -1) {
-                        if (em >= 1) {
-                            sets_c.push(0x20);
-                            sets_s += ' ';
-                            sets_sp++;
-                        }
-                        sets_w += w;
-                        skip = true;
-                    }
-                }
-                break;
-            case 'x':
-                if (inst.b) x = inst.b;
-                if (dir == 0) {
-                    h += x;
-                } else {
-                    v += x;
-                }
-                // skipping
-                if (REJOIN_W && f != undefined && sets_c.length > 0) {
-                    var em = Math.floor(4 * x / document.font_info[f].s);
-                    if (em >= -1) {
-                        if (em >= 1) {
-                            sets_c.push(0x20);
-                            sets_s += ' ';
-                            sets_sp++;
-                        }
-                        sets_w += x;
-                        skip = true;
-                    }
-                }
-                break;
-            case 'down':
-                if (dir == 0) {
-                    v += inst.a;
-                } else {
-                    h -= inst.a;
-                }
-                break;
-            case 'y':
-                if (inst.a) y = inst.a;
-                if (dir == 0) {
-                    v += y;
-                } else {
-                    h -= y;
-                }
-                break;
-            case 'z':
-                if (inst.a) z = inst.a;
-                if (dir == 0) {
-                    v += z;
-                } else {
-                    h -= z;
-                }
-                break;
-            case 'fnt':
-                f = inst.k;
-                break;
-            case 'fnt_def':
-                break;
-            case 'xxx':
-                break;
-            case 'dir':
-                dir = inst.d;
-                break;
-            default:
-                break;
-            } // endswitch
-
-            if (skip) continue;
-
-            if (sets_c.length > 0) {
-                rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
-                sets_c = []; sets_s = ""; sets_w = 0; sets_sp = 0;
-            }
-            rejoined_insts.push(inst);
-        } // endfor
-
-        if (sets_c.length > 0) {
-            rejoined_insts.push({op:'sets', c:sets_c, s:sets_s, w:sets_w, sp:sets_sp});
-        }
-        page.insts = rejoined_insts;
-        document.pages[i] = page;
-    }
-
-    return document;
 }
 
 function grouping(insts) {
