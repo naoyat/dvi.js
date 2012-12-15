@@ -2,6 +2,9 @@ var CLUSTER_MODE = false;
 var BOX_MODE = false;
 var VERBOSE_MODE = false;
 
+var LEFT_MARGIN_IN = 1.0; // inch
+var TOP_MARGIN_IN = 1.0; // inch
+
 var PX_PER_BP = 1.3325; // 1bp = 1.33px
 var BP_PER_PT = 72 / 72.27; // 72.27pt = 72bp
 var PX_PER_PT = PX_PER_BP * BP_PER_PT;
@@ -77,6 +80,10 @@ function dvi_load(out, file, navi) {
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
+
+    var path = file.replace(/\/.*$/, "/");
+    if (path == file) path = "";
+
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
@@ -85,6 +92,7 @@ function dvi_load(out, file, navi) {
         dvi.target = out;
         dvi.navi = navi;
         dvi.curr_page = 0;
+        dvi.path = path;
 
         dvi.next_page = function () {
             if (this.curr_page < this.pages.length - 1) {
@@ -104,7 +112,13 @@ function dvi_load(out, file, navi) {
         };
 
         if (navi != undefined) {
-            $(navi).css({ position:"absolute", top:"5px", left:"5px", border:"1px solid #cccccc", "background-color":"#eeeeee" });
+            $(navi).css({
+                position:"absolute",
+                top:"5px",
+                right:"5px",
+                border:"1px solid #cccccc",
+                "background-color":"#eeeeee"
+            });
             $('<button>⇤</button>')
                 .css('font-size','120%')
                 .click(function(){dvi.page(0);})
@@ -144,9 +158,36 @@ function dvi_keyevent(evt) {
     }
 }
 
+function embed_image(h, v, width, height, depth, dir, imgpath) {
+    var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
+        bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
+        top,
+        wd = width / 65536 * BP_PER_PT,
+        ht = height / 65536 * BP_PER_PT;
+
+    if (dir == 0) {
+        top = bottom - ht;
+    } else {
+        top = bottom;
+        var tmp = ht; ht = wd; wd = tmp;
+    }
+    // rule(h, v, width, height, 0, "red");
+    $('<img />').attr('src', dvi.path + imgpath).css({
+        position: "absolute",
+        /* border: "0.1px solid", */
+        top: p_2f(top)+"pt",
+        left: p_2f(left)+"pt",
+        width: p_2f(wd)+"pt",
+        height: p_2f(ht)+"pt",
+        'min-width': "1px",
+        'min-height': "1px"
+    }).appendTo(dvi.target);
+    // console.log("image "+ p_2f(width) +" "+ p_2f(height) +" "+ p_2f(depth) +" "+ imgpath);
+}
+
 function rule(h, v, width, height, dir, color) {
-    var left   = 72 + h / 65536 * BP_PER_PT,
-        bottom = 72 + v / 65536 * BP_PER_PT,
+    var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
+        bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
         top,
         wd = width / 65536 * BP_PER_PT,
         ht = height / 65536 * BP_PER_PT;
@@ -174,8 +215,8 @@ function rule(h, v, width, height, dir, color) {
 
 function putc(h, v, font_info, str, w, dir, color) {
     var writing_mode = (dir == 0) ? '' : 'vertical-rl';
-    var x = 72 + h/65536 * BP_PER_PT,
-        y = 72 + v/65536 * BP_PER_PT,
+    var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
+        y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
         wd = w/65536 * BP_PER_PT;
     var pt = font_info.s/65536 * BP_PER_PT;
     // var pt = font_info.d / 65536;
@@ -236,8 +277,8 @@ function puts(h, v, font_info, str, w, color) {
     if (VERBOSE_MODE)
         console.log("[SETS] '" + str + " ("+ str.length +")', at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(w/65536) +" ; sp="+ p_2f(sp));
 
-    var x = 72 + h/65536 * BP_PER_PT,
-        y = 72 + v/65536 * BP_PER_PT,
+    var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
+        y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
         wd = w/65536 * BP_PER_PT;
     var spc = sp / (str.length - 1);
 
@@ -675,7 +716,16 @@ function show_page(dvi, page_no) {
             break;
 
         case 'xxx':
-            if (inst.x.match(/color (.*)/)) {
+            // console.log("special:" + inst.x);
+            if (inst.x.match(/pdf: image width ([.0-9]+)pt height ([.0-9]+)pt depth ([.0-9]+)pt\(([^)]+)/)) {
+                var width = 65536 * RegExp.$1;
+                var height = 65536 * RegExp.$2;
+                var depth = 65536 * RegExp.$3;
+                var imgpath = RegExp.$4;
+                embed_image(h, v, width, height, depth, dir, imgpath);
+                h += width;
+                v += height;
+            } else if (inst.x.match(/color (.*)/)) {
                 var cmd = RegExp.$1;
                 if (cmd.match(/push +(.*)/)) {
                     colorst.push(color);
