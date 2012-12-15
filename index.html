@@ -11,7 +11,7 @@
   <link href="http://developer.github.com/shared/css/pygments.css" media="screen" rel="stylesheet" type="text/css">
   <link rel="stylesheet" type="text/css" href="texfonts.min.css"></style>
 </head>
-<body class="api" onload="if (args.dvi) dvi_load('#out','samples/'+args.dvi,'#navi');">
+<body class="api" onload="if (args.dvi) {args.dvi='samples/'+args.dvi; dvi_load('#out',args.dvi,'#navi');}">
 
 <div id="navi"></div>
 
