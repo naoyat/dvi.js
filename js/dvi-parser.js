@@ -18,8 +18,9 @@ var SEPARATE_BY_FONT = true;
 var USE_THINSP = false;
 var THIN_SPACE_THRESHOLD = 0.3;
 
-var dvi = undefined;
-
+/**
+ * browser distinction
+ */
 var AGENT_UNKNOWN = 0;
 var AGENT_CHROME  = 1;
 var AGENT_FIREFOX = 2;
@@ -35,6 +36,9 @@ if (navigator.userAgent.search(/Chrome/) != -1) {
     user_agent = AGENT_UNKNOWN;
 }
 
+/**
+ * URL arguments
+ */
 var args = (function (querystring) {
     var args = {};
     var pair = querystring.split('&');
@@ -48,31 +52,32 @@ var args = (function (querystring) {
   return args;
 })(location.search.substring(1));
 
-if (args.cluster != undefined) CLUSTER_MODE = (args.cluster == 1);
-if (args.box != undefined) BOX_MODE = (args.box == 1);
-if (args.verbose != undefined) VERBOSE_MODE = (args.verbose == 1);
-if (args.sbf != undefined) SEPARATE_BY_FONT = (args.sbf == 1);
+if (args.cluster != undefined)     CLUSTER_MODE = (args.cluster == 1);
+if (args.box     != undefined)         BOX_MODE = (args.box     == 1);
+if (args.verbose != undefined)     VERBOSE_MODE = (args.verbose == 1);
+if (args.sbf     != undefined) SEPARATE_BY_FONT = (args.sbf     == 1);
 
-document.onkeydown = dvi_keyevent;
-var page_mode = 0;
+function show_page_0(dvi, page_mode) {
+    function open_the_page() {
+        var page_no = location.hash.length == 0 ? 0 : (parseInt(location.hash.substr(1)) - 1);
+        console.log("open the page "+ page_no);
+        dvi.page(page_no);
+    }
 
-function show_page_0() {
     if (!TFM_LOAD_ON_DEMAND) {
-        dvi.page(0);
+        open_the_page();
         return;
     }
 
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
-            $(dvi.target).children().remove();
-            $('<span />').text("now rendering...").css({ "text-decoration": "blink" }).appendTo(dvi.target);
+            dvi.g.cls();
+            dvi.g.say("now rendering...");
         }
-        ++page_mode;
-        setTimeout(show_page_0, 0.1);
+        setTimeout(function(){show_page_0(dvi,page_mode+1);}, 0.1);
     } else {
         // $(dvi.target)[0].innerHTML = "<pre>" + dump_tfms() + "</pre>";
-        dvi.page(0);
-        page_mode = -1;
+        open_the_page();
     }
 }
 
@@ -81,18 +86,17 @@ function dvi_load(out, file, navi) {
         file += ".dvi";
     }
 
-    var path = file.replace(/\/.*$/, "/");
-    if (path == file) path = "";
+    var file_dir = file.replace(/\/.*$/, "/");
+    if (file_dir == file) file_dir = "";
 
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
         // dvi = rejoin_chars(grouping(insts));
-        dvi = grouping(insts);
-        dvi.target = out;
+        var dvi = grouping(insts);
+        dvi.g = new Graphics(out, file_dir);
         dvi.navi = navi;
         dvi.curr_page = 0;
-        dvi.path = path;
 
         dvi.next_page = function () {
             if (this.curr_page < this.pages.length - 1) {
@@ -110,6 +114,20 @@ function dvi_load(out, file, navi) {
             else if (-this.pages.length+1 <= page_no && page_no < 0)
                 show_page(this, this.curr_page = (this.pages.length + page_no));
         };
+        dvi.keyevent = function (evt) {
+            switch (evt.keyCode) {
+            case 32: // space
+                break;
+            case 37: case 38: case 72: case 75: case 80: // left up h k p
+                if (dvi != undefined) dvi.prev_page();
+                break;
+            case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
+                if (dvi != undefined) dvi.next_page();
+                break;
+            default: break;
+            }
+        };
+        document.onkeydown = dvi.keyevent;
 
         if (navi != undefined) {
             $(navi).css({
@@ -139,163 +157,170 @@ function dvi_load(out, file, navi) {
                 .click(function(){dvi.page(-1);})
                 .appendTo(navi);
         };
-        show_page_0();
+        show_page_0(dvi,0);
     });
 }
 
+var Graphics = function(out_elem, file_dir) {
+    var out = out_elem;
+    var path = file_dir;
+    var ruler_span = $('<span />').text('').appendTo(out);
 
-function dvi_keyevent(evt) {
-    switch (evt.keyCode) {
-        case 32: // space
-            break;
-        case 37: case 38: case 72: case 75: case 80: // left up h k p
-            if (dvi != undefined) dvi.prev_page();
-            break;
-        case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
-            if (dvi != undefined) dvi.next_page();
-            break;
-        default: break;
-    }
-}
-
-function embed_image(h, v, width, height, depth, dir, imgpath) {
-    var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
-        bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
-        top,
-        wd = width / 65536 * BP_PER_PT,
-        ht = height / 65536 * BP_PER_PT;
-
-    if (dir == 0) {
-        top = bottom - ht;
-    } else {
-        top = bottom;
-        var tmp = ht; ht = wd; wd = tmp;
-    }
-    // rule(h, v, width, height, 0, "red");
-    $('<img />').attr('src', dvi.path + imgpath).css({
-        position: "absolute",
-        /* border: "0.1px solid", */
-        top: p_2f(top)+"pt",
-        left: p_2f(left)+"pt",
-        width: p_2f(wd)+"pt",
-        height: p_2f(ht)+"pt",
-        'min-width': "1px",
-        'min-height': "1px"
-    }).appendTo(dvi.target);
-    // console.log("image "+ p_2f(width) +" "+ p_2f(height) +" "+ p_2f(depth) +" "+ imgpath);
-}
-
-function rule(h, v, width, height, dir, color) {
-    var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
-        bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
-        top,
-        wd = width / 65536 * BP_PER_PT,
-        ht = height / 65536 * BP_PER_PT;
-
-    if (dir == 0) {
-        top = bottom - ht;
-    } else {
-        top = bottom;
-        var tmp = ht; ht = wd; wd = tmp;
-    }
-
-    $('<span />').css({
-        position: "absolute",
-        /* border: "0.1px solid", */
-        'background-color': color,
-        top: p_2f(top)+"pt",
-        left: p_2f(left)+"pt",
-        width: p_2f(wd)+"pt",
-        height: p_2f(ht)+"pt",
-        'min-width': "1px",
-        'min-height': "1px"
-    }).appendTo(dvi.target);
-}
-
-
-function putc(h, v, font_info, str, w, dir, color) {
-    var writing_mode = (dir == 0) ? '' : 'vertical-rl';
-    var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
-        y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
-        wd = w/65536 * BP_PER_PT;
-    var pt = font_info.s/65536 * BP_PER_PT;
-    // var pt = font_info.d / 65536;
-    var css = { color: color };
-
-    if (BOX_MODE) {
-        css.border = "solid 1px #9999cc";
-        css.color = "#333366";
-    }
-
-    var family_ = font_info.file.replace(/[1-9][0-9]*$/, "");
-    if (dir == 0) {
-        if (family_ == 'min' || family_ == 'goth'
-            || family_ == 'jis' || family_ == 'jisg') {
-        }
-        /// y -= ht;
-
-        css.top = p_2f(y)+"pt";
-        css.left = p_2f(x)+"pt";
-        css.width = "3px"; // p_2f(w)+"pt";
-        css.height = "0px"; // p_2f(pt)+"pt";
-    } else {
-        if (family_ == 'tmin' || family_ == 'tgoth') {
-            x -= pt * 0.2;
-        } else {
-            x -= pt * 0.3;
-            css['-moz-transform'] =  "rotate(90deg)";
-        }
-
-        css.top = p_2f(y)+"pt";
-        css.left = p_2f(x)+"pt";
-        css.width = "0px"; // p_2f(pt)+"pt";
-        css.height = "3px"; // p_2f(w*2)+"pt";
-        // IE
-        css['writing-mode'] = 'vertical-rl';
-        // Firefox
-        css['-moz-writing-mode'] = 'vertical-rl'; // 効かない
-        css['-moz-font-feature-settings'] = '"vert","vrt2"';
-        // css['-moz-transform'] =  "translate(0em, -0.3em) rotate(0deg)";
-        // Chrome
-        css['-webkit-writing-mode'] = 'vertical-rl';
-        // Opera
-        css['-o-writing-mode'] = 'vertical-rl';
-    }
-
-    if (SEPARATE_BY_FONT)
-        $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(dvi.target);
-    else
-        $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(dvi.target);
-}
-
-function puts(h, v, font_info, str, w, color) {
-    var width_on_canvas = strWidth(font_info, str); // px
-    if (VERBOSE_MODE)
-        console.log(":sw: "+ p_2f(width_on_canvas/PX_PER_PT) +" | "+ p_2f(w/65536));
-    var sp = w/65536 * PX_PER_PT - width_on_canvas; // px
-
-    if (VERBOSE_MODE)
-        console.log("[SETS] '" + str + " ("+ str.length +")', at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(w/65536) +" ; sp="+ p_2f(sp));
-
-    var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
-        y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
-        wd = w/65536 * BP_PER_PT;
-    var spc = sp / (str.length - 1);
-
-    var css = {
-        color: color,
-        'letter-spacing': p_2f(Math.floor(spc+0.5)) +'px',
-        top: p_2f(y) +'pt',
-        left: p_2f(x) +'pt',
-        width: p_2f(wd) +'pt',
-        height: '0px'
+    this.cls = function () {
+        $(out).children().remove();
     };
-    if (SEPARATE_BY_FONT)
-        $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(dvi.target);
-    else
-        $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(dvi.target);
-}
+    this.say = function (msg) {
+        $('<span />').text(msg).css({ "text-decoration": "blink" }).appendTo(out);
+    };
 
+    this.embed_image = function (h, v, width, height, depth, dir, imgpath) {
+        var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
+            bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
+            top,
+            wd = width / 65536 * BP_PER_PT,
+            ht = height / 65536 * BP_PER_PT;
+
+        if (dir == 0) {
+            top = bottom - ht;
+        } else {
+            top = bottom;
+            var tmp = ht; ht = wd; wd = tmp;
+        }
+
+        // rule(h, v, width, height, 0, "red");
+        console.log("src. dir="+path +", imgpath="+ imgpath);
+        $('<img />').attr('src', path + imgpath).css({
+            position: "absolute",
+            /* border: "0.1px solid", */
+            top: p_2f(top)+"pt",
+            left: p_2f(left)+"pt",
+            width: p_2f(wd)+"pt",
+            height: p_2f(ht)+"pt",
+            'min-width': "1px",
+            'min-height': "1px"
+        }).appendTo(out);
+        // console.log("image "+ p_2f(width) +" "+ p_2f(height) +" "+ p_2f(depth) +" "+ imgpath);
+    };
+    this.rule = function (h, v, width, height, dir, color) {
+        var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
+            bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
+            top,
+            wd = width / 65536 * BP_PER_PT,
+            ht = height / 65536 * BP_PER_PT;
+
+        if (dir == 0) {
+            top = bottom - ht;
+        } else {
+            top = bottom;
+            var tmp = ht; ht = wd; wd = tmp;
+        }
+
+        $('<span />').css({
+            position: "absolute",
+            /* border: "0.1px solid", */
+            'background-color': color,
+            top: p_2f(top)+"pt",
+            left: p_2f(left)+"pt",
+            width: p_2f(wd)+"pt",
+            height: p_2f(ht)+"pt",
+            'min-width': "1px",
+            'min-height': "1px"
+        }).appendTo(out);
+    };
+    this.putc = function (h, v, font_info, str, w, dir, color) {
+        var writing_mode = (dir == 0) ? '' : 'vertical-rl';
+        var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
+            y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
+            wd = w/65536 * BP_PER_PT;
+        var pt = font_info.s/65536 * BP_PER_PT;
+        // var pt = font_info.d / 65536;
+        var css = { color: color };
+
+        if (BOX_MODE) {
+            css.border = "solid 1px #9999cc";
+            css.color = "#333366";
+        }
+
+        var family_ = font_info.file.replace(/[1-9][0-9]*$/, "");
+        if (dir == 0) {
+            if (family_ == 'min' || family_ == 'goth'
+                || family_ == 'jis' || family_ == 'jisg') {
+            }
+            /// y -= ht;
+
+            css.top = p_2f(y)+"pt";
+            css.left = p_2f(x)+"pt";
+            css.width = "3px"; // p_2f(w)+"pt";
+            css.height = "0px"; // p_2f(pt)+"pt";
+        } else {
+            if (family_ == 'tmin' || family_ == 'tgoth') {
+                x -= pt * 0.2;
+            } else {
+                x -= pt * 0.3;
+                css['-moz-transform'] =  "rotate(90deg)";
+            }
+
+            css.top = p_2f(y)+"pt";
+            css.left = p_2f(x)+"pt";
+            css.width = "0px"; // p_2f(pt)+"pt";
+            css.height = "3px"; // p_2f(w*2)+"pt";
+            // IE
+            css['writing-mode'] = 'vertical-rl';
+            // Firefox
+            css['-moz-writing-mode'] = 'vertical-rl'; // 効かない
+            css['-moz-font-feature-settings'] = '"vert","vrt2"';
+            // css['-moz-transform'] =  "translate(0em, -0.3em) rotate(0deg)";
+            // Chrome
+            css['-webkit-writing-mode'] = 'vertical-rl';
+            // Opera
+            css['-o-writing-mode'] = 'vertical-rl';
+        }
+
+        if (SEPARATE_BY_FONT)
+            $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(out);
+        else
+            $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(out);
+    };
+
+    this.puts = function (h, v, font_info, str, w, color) {
+        var width_on_canvas = strWidth(font_info, str); // px
+        if (VERBOSE_MODE)
+            console.log(":sw: "+ p_2f(width_on_canvas/PX_PER_PT) +" | "+ p_2f(w/65536));
+        var sp = w/65536 * PX_PER_PT - width_on_canvas; // px
+
+        if (VERBOSE_MODE)
+            console.log("[SETS] '" + str + " ("+ str.length +")', at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(w/65536) +" ; sp="+ p_2f(sp));
+
+        var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
+            y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
+            wd = w/65536 * BP_PER_PT;
+        var spc = sp / (str.length - 1);
+
+        var css = {
+            color: color,
+            'letter-spacing': p_2f(Math.floor(spc+0.5)) +'px',
+            top: p_2f(y) +'pt',
+            left: p_2f(x) +'pt',
+            width: p_2f(wd) +'pt',
+            height: '0px'
+        };
+        if (SEPARATE_BY_FONT)
+            $("<span class='k"+ font_info.k +"'/>").html(str).css(css).appendTo(out);
+        else
+            $("<span class='k"+ font_info.k +"'/>").text(str).css(css).appendTo(out);
+    };
+
+    this.strWidth = function(font_info, str) { // px
+        var css = css_for_font(font_info), width;
+        css['letter-spacing'] = '0px';
+        if (SEPARATE_BY_FONT)
+            width = ruler_span.html(str).css(css).get(0).offsetWidth;
+        else
+            width = ruler_span.text(str).css(css).get(0).offsetWidth;
+        ruler_span.empty();
+        return width; //  / PX_PER_PT;
+    };
+};
 
 function font_desc(font_info) {
     var font_size = font_info.s/65536 * PX_PER_PT; // px
@@ -337,19 +362,6 @@ function add_font_class(font_infos) {
     }
     // console.log('<style>'+ style + '</style>');
     $('<style>' + style + '</style>').appendTo('head');
-}
-
-var ruler_span;
-
-function strWidth(font_info, str) { // px
-    var css = css_for_font(font_info), width;
-    css['letter-spacing'] = '0px';
-    if (SEPARATE_BY_FONT)
-        width = ruler_span.html(str).css(css).get(0).offsetWidth;
-    else
-        width = ruler_span.text(str).css(css).get(0).offsetWidth;
-    ruler_span.empty();
-    return width; //  / PX_PER_PT;
 }
 
 function vert_adjust(font_info) {
@@ -415,6 +427,9 @@ function horiz_adjust(font_info) {
 }
 
 function show_page(dvi, page_no) {
+    // update hash
+    location.replace('#' + (1 + page_no));
+
     var rendering_starts_at = new Date();
 
     var page = dvi.pages[page_no];
@@ -423,8 +438,7 @@ function show_page(dvi, page_no) {
     if (dvi.navi != undefined) {
         $('#page_no')[0].innerHTML = (1 + page_no);
     }
-    $(dvi.target).children().remove();
-    ruler_span = $('<span />').text('').appendTo(dvi.target);
+    dvi.g.cls();
 
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
@@ -445,7 +459,7 @@ function show_page(dvi, page_no) {
     function puts_so_far() {
         if (num_cluster_chars > 0) {
             v_adjust = -vert_adjust(font_infos[f]);
-            puts(cluster_start_h, cluster_start_v+v_adjust, font_infos[f], cluster_string, cluster_width, color);
+            dvi.g.puts(cluster_start_h, cluster_start_v+v_adjust, font_infos[f], cluster_string, cluster_width, color);
         }
         cluster_start_h = cluster_start_v = undefined;
         num_cluster_chars = 0;
@@ -566,11 +580,11 @@ function show_page(dvi, page_no) {
                 }
                 if (dir == 0) {
                     v_adjust = -vert_adjust(font_infos[f]);
-                    putc(h+h_adjust, v+v_adjust, font_infos[f], inst._, width, dir, color);
+                    dvi.g.putc(h+h_adjust, v+v_adjust, font_infos[f], inst._, width, dir, color);
                     h += width;
                 } else {
                     v_adjust = horiz_adjust(font_infos[f]);
-                    putc(h+v_adjust, v+h_adjust, font_infos[f], inst._, width, dir, color);
+                    dvi.g.putc(h+v_adjust, v+h_adjust, font_infos[f], inst._, width, dir, color);
                     v += width;
                 }
             } // NON CLUSTER MODE
@@ -593,7 +607,7 @@ function show_page(dvi, page_no) {
             }
             width += inst.w;
 
-            putc(h, v, font_infos[f], str, width, dir, color);
+            dvi.g.putc(h, v, font_infos[f], str, width, dir, color);
             if (dir == 0) {
                 h += width;
             } else {
@@ -604,7 +618,7 @@ function show_page(dvi, page_no) {
         case 'set_rule':
             if (VERBOSE_MODE)
                 console.log("[RULE] at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(inst.b/65536) + ", height="+ p_2f(inst.a/65536));
-            rule(h, v, inst.b, inst.a, dir, color);
+            dvi.g.rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 h += inst.b;
             } else {
@@ -616,7 +630,7 @@ function show_page(dvi, page_no) {
             break;
 
         case 'put_rule':
-            rule(h, v, inst.b, inst.a, dir, color);
+            dvi.g.rule(h, v, inst.b, inst.a, dir, color);
             if (dir == 0) {
                 // h += inst.b;
             } else {
@@ -722,7 +736,7 @@ function show_page(dvi, page_no) {
                 var height = 65536 * RegExp.$2;
                 var depth = 65536 * RegExp.$3;
                 var imgpath = RegExp.$4;
-                embed_image(h, v, width, height, depth, dir, imgpath);
+                dvi.g.embed_image(h, v, width, height, depth, dir, imgpath);
                 h += width;
                 v += height;
             } else if (inst.x.match(/color (.*)/)) {
@@ -766,15 +780,6 @@ function show_page(dvi, page_no) {
 
     var rendering_ends_at = new Date();
     console.log("PAGE "+ (1 + page_no) + ": RENDERING TIME = "+ p_2f((rendering_ends_at - rendering_starts_at)/1000) + "sec");
-}
-
-function dump_code(insts) {
-    var dumped = insts.length + " instructions\n";
-    for (var i in insts) {
-        var inst = insts[i];
-        dumped += JSON.stringify(inst).replace(/,/g,", ").replace(/"/g,"") + "\n";
-    }
-    return dumped;
 }
 
 function grouping(insts) {
@@ -833,16 +838,16 @@ function grouping(insts) {
     return dvi;
 }
 
-function bakoma(c) {
-    if (c <= 0x09) return 0xa1 + c;
-    if (c <= 0x20) return 0xad + (c - 0x0a);
-    if (c <= 0x7e) return c;
-    return 0xc4;
-}
-
 function parse_dvi(arr) {
     var len = arr.length;
     var code = [];
+
+    function bakoma(c) {
+        if (c <= 0x09) return 0xa1 + c;
+        if (c <= 0x20) return 0xad + (c - 0x0a);
+        if (c <= 0x7e) return c;
+        return 0xc4;
+    }
 
     for (var ptr = 0; ptr < len; ) {
         var op = arr[ptr++];
@@ -1013,4 +1018,14 @@ function parse_dvi(arr) {
         } // endif
     } // endfor
     return code;
+}
+
+
+function dump_code(insts) {
+    var dumped = insts.length + " instructions\n";
+    for (var i in insts) {
+        var inst = insts[i];
+        dumped += JSON.stringify(inst).replace(/,/g,", ").replace(/"/g,"") + "\n";
+    }
+    return dumped;
 }
