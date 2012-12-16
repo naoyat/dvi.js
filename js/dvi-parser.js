@@ -9,7 +9,6 @@ var PX_PER_BP = 1.3325; // 1bp = 1.33px
 var BP_PER_PT = 72 / 72.27; // 72.27pt = 72bp
 var PX_PER_PT = PX_PER_BP * BP_PER_PT;
 
-var JFM_SHRINK = 0.962216;
 var JFM_HSHRINK = 0.9164428;
 var TFM_LOAD_ON_DEMAND = false;
 
