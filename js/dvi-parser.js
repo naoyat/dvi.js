@@ -60,7 +60,6 @@ if (args.sbf     != undefined) SEPARATE_BY_FONT = (args.sbf     == 1);
 function show_page_0(dvi, page_mode) {
     function open_the_page() {
         var page_no = location.hash.length == 0 ? 0 : (parseInt(location.hash.substr(1)) - 1);
-        console.log("open the page "+ page_no);
         dvi.page(page_no);
     }
 
@@ -187,8 +186,6 @@ var Graphics = function(out_elem, file_dir) {
             var tmp = ht; ht = wd; wd = tmp;
         }
 
-        // rule(h, v, width, height, 0, "red");
-        console.log("src. dir="+path +", imgpath="+ imgpath);
         $('<img />').attr('src', path + imgpath).css({
             position: "absolute",
             /* border: "0.1px solid", */
