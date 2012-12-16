@@ -324,10 +324,10 @@ function font_desc(font_info) {
     var family = font_info.file;
     if (family.match(/[^c]?min/) || family.match(/jis[^g]?/)) {
         font_size *= JFM_HSHRINK;
-        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝'";
+        family = "'ヒラギノ明朝 Pro W3','ＭＳ 明朝', 'Hiragino Mincho Pro'";
     } else if (family.match(/goth/) || family.match(/jisg/)) {
         font_size *= JFM_HSHRINK;
-        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック'";
+        family = "'ヒラギノ角ゴ Pro W3','ＭＳ ゴシック', 'Hiragino Gothic Pro'";
     } else {
         family = "'" + family + "'";
     }
