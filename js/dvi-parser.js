@@ -745,6 +745,9 @@ function show_page(dvi, page_no) {
                             g = Math.floor(255 * RegExp.$2),
                             b = Math.floor(255 * RegExp.$3);
                         color = '#' + p_0x(2,r) + p_0x(2,g) + p_0x(2,b);
+                    } else if (arg.match(/gray ([^ ]+)/)) {
+                        var gr = Math.floor(255 * RegExp.$1);
+                        color = '#' + p_0x(2,gr) + p_0x(2,gr) + p_0x(2,gr);
                     } else if (arg.match(/cmyk ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+)/)) {
                         var c = RegExp.$1,
                             m = RegExp.$2,
