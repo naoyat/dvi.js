@@ -119,7 +119,7 @@ function dvi_load(out, file, navi) {
             case 37: case 38: case 72: case 75: case 80: // left up h k p
                 if (dvi != undefined) dvi.prev_page();
                 break;
-            case 32: case 39: case 40: case 74: case 76: case 78: // spc right down j l n
+            case 39: case 40: case 74: case 76: case 78: // spc right down j l n
                 if (dvi != undefined) dvi.next_page();
                 break;
             default: break;
