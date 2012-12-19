@@ -162,7 +162,7 @@ function dvi_load(out, file, navi) {
 var Graphics = function(out_elem, file_dir) {
     var out = out_elem;
     var path = file_dir;
-    var ruler_span = $('<span />').text('').appendTo(out);
+    var ruler_span = undefined;
 
     this.cls = function () {
         $(out).children().remove();
@@ -279,7 +279,7 @@ var Graphics = function(out_elem, file_dir) {
     };
 
     this.puts = function (h, v, font_info, str, w, color) {
-        var width_on_canvas = strWidth(font_info, str); // px
+        var width_on_canvas = this.strWidth(font_info, str); // px
         if (VERBOSE_MODE)
             console.log(":sw: "+ p_2f(width_on_canvas/PX_PER_PT) +" | "+ p_2f(w/65536));
         var sp = w/65536 * PX_PER_PT - width_on_canvas; // px
@@ -309,6 +309,9 @@ var Graphics = function(out_elem, file_dir) {
     this.strWidth = function(font_info, str) { // px
         var css = css_for_font(font_info), width;
         css['letter-spacing'] = '0px';
+        if (ruler_span == undefined) {
+            ruler_span = $('<span id="ruler_span" />').text('').appendTo(out);
+        }
         if (SEPARATE_BY_FONT)
             width = ruler_span.html(str).css(css).get(0).offsetWidth;
         else
