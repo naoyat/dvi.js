@@ -10,9 +10,27 @@
 
   <link rel="stylesheet" type="text/css" href="texfonts-local.css"></style>
 </head>
-<body onload="if(args.dvi) dvi_load('#out',args.dvi);">
+<body onload="if(args.dvi) {
+              dvi_load({
+              out:'#out',file:args.dvi,
+              ofs_x: 0.5, ofs_y: 0.5,
+              width: 3.33, height: 2.22,
+              left_margin:0.3, top_margin:0.3,
+              border: '1px solid #f8f8f0',
+              bgcolor: '#fcfcf8'
+              });
+              dvi_load({
+              out:'#out2',file:args.dvi,
+              ofs_x: 0.5, ofs_y: 3.0,
+              width: 3.33, height: 2.22,
+              left_margin:0.3, top_margin:0.3,
+              border: '1px solid #f8f8f0',
+              bgcolor: '#fcfcf8'
+              });
+              }">
 
 <div id="out"></div>
+<div id="out2"></div>
 
 <script type="text/javascript"><!--
     hatena_counter_name = "n4_t";
