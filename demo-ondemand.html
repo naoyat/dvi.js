@@ -10,7 +10,7 @@
 
   <link rel="stylesheet" type="text/css" href="texfonts-local.css"></style>
 </head>
-<body onload="if(args.dvi){ TFM_LOAD_ON_DEMAND=true; dvi_load('#out',args.dvi); }">
+<body onload="if(args.dvi){ TFM_LOAD_ON_DEMAND=true; dvi_load({out:'#out',file:args.dvi}); }">
 
 <div id="out"></div>
 

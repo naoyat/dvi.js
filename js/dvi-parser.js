@@ -2,9 +2,6 @@ var CLUSTER_MODE = false;
 var BOX_MODE = false;
 var VERBOSE_MODE = false;
 
-var LEFT_MARGIN_IN = 1.0; // inch
-var TOP_MARGIN_IN = 1.0; // inch
-
 var PX_PER_BP = 1.3325; // 1bp = 1.33px
 var BP_PER_PT = 72 / 72.27; // 72.27pt = 72bp
 var PX_PER_PT = PX_PER_BP * BP_PER_PT;
@@ -80,20 +77,21 @@ function show_page_0(dvi, page_mode) {
     }
 }
 
-function dvi_load(out, file) {
+function dvi_load(params) {
+    var file = params.file;
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
-
-    var file_dir = file.replace(/\/.*$/, "/");
-    if (file_dir == file) file_dir = "";
+    var path = file.replace(/\/.*$/, "/");
+    if (path == file) path = "";
+    params.path = path;
 
     getBinary(file, function(arraybuf) {
         var arr = new Uint8Array(arraybuf);
         var insts = parse_dvi(arr);
         // dvi = rejoin_chars(grouping(insts));
         var dvi = grouping(insts);
-        dvi.g = new Graphics(out, file_dir);
+        dvi.g = new Graphics(params);
         dvi.curr_page = 0;
 
         dvi.next_page = function () {
@@ -132,19 +130,39 @@ function dvi_load(out, file) {
     });
 }
 
-var Graphics = function(out_elem, file_dir) {
-    var out = out_elem;
-    var path = file_dir;
+var Graphics = function(params) {
+    var out = params.out,
+        path = params.path,
+        ofs_x = params.ofs_x || 0,
+        ofs_y = params.ofs_y || 0,
+        // paper = params.paper || 'a5',
+        paper_width = params.width || 8.27,
+        paper_height = params.height || 11.66,
+        paper_border = params.border || 'none',
+        paper_bgcolor = params.bgcolor || '#fff',
+        left_margin = params.left_margin || 1.0,
+        top_margin = params.top_margin || 1.0;
+
     var ruler_span = undefined;
 
     this.cls = function () {
         $(out).children().remove();
+        $('<div />').css({
+            position:"absolute",
+            top: p_2f(72*ofs_y)+"pt",
+            left: p_2f(72*ofs_x)+"pt",
+            width: p_2f(72*paper_width)+"pt",
+            height: p_2f(72*paper_height)+"pt",
+            border: paper_border,
+            "background-color": paper_bgcolor
+        }).appendTo(out);
     };
     this.add_navi = function (dvi) {
         var navi = $('<div />').css({
             position:"absolute",
-            top:"5px",
-            right:"5px",
+            top: p_2f(72*ofs_y)+"pt",
+            /* left: p_2f(72*(ofs_x+paper_width)+12)+"pt", */
+            right: p_2f(5)+"px",
             border:"1px solid #cccccc",
             "background-color":"#eeeeee"
         }).appendTo(out);
@@ -175,8 +193,8 @@ var Graphics = function(out_elem, file_dir) {
     };
 
     this.embed_image = function (h, v, width, height, depth, dir, imgpath) {
-        var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
-            bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
+        var left   = 72*(ofs_x+left_margin) + h / 65536 * BP_PER_PT,
+            bottom = 72*(ofs_y+top_margin) + v / 65536 * BP_PER_PT,
             top,
             wd = width / 65536 * BP_PER_PT,
             ht = height / 65536 * BP_PER_PT;
@@ -201,8 +219,8 @@ var Graphics = function(out_elem, file_dir) {
         // console.log("image "+ p_2f(width) +" "+ p_2f(height) +" "+ p_2f(depth) +" "+ imgpath);
     };
     this.rule = function (h, v, width, height, dir, color) {
-        var left   = 72*LEFT_MARGIN_IN + h / 65536 * BP_PER_PT,
-            bottom = 72*TOP_MARGIN_IN + v / 65536 * BP_PER_PT,
+        var left   = 72*(ofs_x+left_margin) + h / 65536 * BP_PER_PT,
+            bottom = 72*(ofs_y+top_margin) + v / 65536 * BP_PER_PT,
             top,
             wd = width / 65536 * BP_PER_PT,
             ht = height / 65536 * BP_PER_PT;
@@ -228,8 +246,8 @@ var Graphics = function(out_elem, file_dir) {
     };
     this.putc = function (h, v, font_info, str, w, dir, color) {
         var writing_mode = (dir == 0) ? '' : 'vertical-rl';
-        var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
-            y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
+        var x = 72*(ofs_x+left_margin) + h/65536 * BP_PER_PT,
+            y = 72*(ofs_y+top_margin) + v/65536 * BP_PER_PT,
             wd = w/65536 * BP_PER_PT;
         var pt = font_info.s/65536 * BP_PER_PT;
         // var pt = font_info.d / 65536;
@@ -290,8 +308,8 @@ var Graphics = function(out_elem, file_dir) {
         if (VERBOSE_MODE)
             console.log("[SETS] '" + str + " ("+ str.length +")', at ("+ p_2f(h/65536) +", "+ p_2f(v/65536) +"), width="+ p_2f(w/65536) +" ; sp="+ p_2f(sp));
 
-        var x = 72*LEFT_MARGIN_IN + h/65536 * BP_PER_PT,
-            y = 72*TOP_MARGIN_IN + v/65536 * BP_PER_PT,
+        var x = 72*(ofs_x+left_margin) + h/65536 * BP_PER_PT,
+            y = 72*(ofs_y+top_margin) + v/65536 * BP_PER_PT,
             wd = w/65536 * BP_PER_PT;
         var spc = sp / (str.length - 1);
 
