@@ -70,6 +70,7 @@ function show_page_0(dvi, page_mode) {
     if (tfm_loading_count > 0) {
         if (page_mode == 0) {
             dvi.g.cls();
+            dvi.g.add_navi(dvi);
             dvi.g.say("now rendering...");
         }
         setTimeout(function(){show_page_0(dvi,page_mode+1);}, 0.1);
@@ -79,7 +80,7 @@ function show_page_0(dvi, page_mode) {
     }
 }
 
-function dvi_load(out, file, navi) {
+function dvi_load(out, file) {
     if (!file.match(/.*\.dvi/)) {
         file += ".dvi";
     }
@@ -93,7 +94,6 @@ function dvi_load(out, file, navi) {
         // dvi = rejoin_chars(grouping(insts));
         var dvi = grouping(insts);
         dvi.g = new Graphics(out, file_dir);
-        dvi.navi = navi;
         dvi.curr_page = 0;
 
         dvi.next_page = function () {
@@ -127,34 +127,7 @@ function dvi_load(out, file, navi) {
         };
         document.onkeydown = dvi.keyevent;
 
-        if (navi != undefined) {
-            $(navi).css({
-                position:"absolute",
-                top:"5px",
-                right:"5px",
-                border:"1px solid #cccccc",
-                "background-color":"#eeeeee"
-            });
-            $('<button>⇤</button>')
-                .css('font-size','120%')
-                .click(function(){dvi.page(0);})
-                .appendTo(navi);
-            $('<button>←</button>')
-                .css('font-size','120%')
-                .click(function(){dvi.prev_page();})
-                .appendTo(navi);
-            $('<span id="page_no">1</span>')
-                .css('font-size','120%')
-                .appendTo(navi);
-            $('<button>→</button>')
-                .css('font-size','120%')
-                .click(function(){dvi.next_page();})
-                .appendTo(navi);
-            $('<button>⇥</button>')
-                .css('font-size','120%')
-                .click(function(){dvi.page(-1);})
-                .appendTo(navi);
-        };
+
         show_page_0(dvi,0);
     });
 }
@@ -167,6 +140,36 @@ var Graphics = function(out_elem, file_dir) {
     this.cls = function () {
         $(out).children().remove();
     };
+    this.add_navi = function (dvi) {
+        var navi = $('<div />').css({
+            position:"absolute",
+            top:"5px",
+            right:"5px",
+            border:"1px solid #cccccc",
+            "background-color":"#eeeeee"
+        }).appendTo(out);
+
+        $('<button>⇤</button>')
+            .css('font-size','120%')
+            .click(function(){dvi.page(0);})
+            .appendTo(navi);
+        $('<button>←</button>')
+            .css('font-size','120%')
+            .click(function(){dvi.prev_page();})
+            .appendTo(navi);
+        $('<span id="page_no"></span>')
+            .text(''+ (1+dvi.curr_page))
+            .css('font-size','120%')
+            .appendTo(navi);
+        $('<button>→</button>')
+            .css('font-size','120%')
+            .click(function(){dvi.next_page();})
+            .appendTo(navi);
+        $('<button>⇥</button>')
+            .css('font-size','120%')
+            .click(function(){dvi.page(-1);})
+            .appendTo(navi);
+    }
     this.say = function (msg) {
         $('<span />').text(msg).css({ "text-decoration": "blink" }).appendTo(out);
     };
@@ -438,6 +441,7 @@ function show_page(dvi, page_no) {
         $('#page_no')[0].innerHTML = (1 + page_no);
     }
     dvi.g.cls();
+    dvi.g.add_navi(dvi);
 
     var h = 0, v = 0, w = 0, x = 0, y = 0, z = 0, f = undefined;
     var st = [];
