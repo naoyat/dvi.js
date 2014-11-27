@@ -15,7 +15,7 @@ JavaScriptでdviプレビューアを書いてみるというネタ
 
 ## デモ
 
-http://naoyat.github.com/dvi.js/
+http://naoayt.github.io/dvi.js/
 
 ## 道のり
 
@@ -38,8 +38,8 @@ http://naoyat.github.com/dvi.js/
   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
   <title>dvi.js demo</title>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-  <script type="text/javascript" src="http://naoyat.github.com/dvi.js/dvi.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="http://naoyat.github.com/dvi.js/texfonts.min.css"></style>
+  <script type="text/javascript" src="http://naoayt.github.io/dvi.js/dvi.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://naoayt.github.io/dvi.js/texfonts.min.css"></style>
 </head>
 <body onload="dvi_load('#out','sample.dvi','#navi');">
 <div id="navi"></div>
